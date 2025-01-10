@@ -1,47 +1,70 @@
-import javax.swing.JFrame; // Importation de la classe JFrame de la bibliothèque Swing pour créer une fenêtre graphique.
+
+import javax.swing.*;
+import java.awt.event.*;
 
 public class App {
-    public static void main(String[] args) throws Exception {
-        // Définition des paramètres du tableau de jeu
-        int rowCount = 21;  // Le nombre de lignes dans le tableau (hauteur)
-        int columnCount = 19; // Le nombre de colonnes dans le tableau (largeur)
-        int tileSize = 32;  // La taille d'une tuile (unité de mesure de chaque "case" du tableau, ici 32x32 pixels)
+    public static void main(String[] args) {
+        // Créer une fenêtre pour demander le nom du joueur
+        JFrame nameFrame = new JFrame("Entrez votre nom");
+        nameFrame.setSize(300, 150);
+        nameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        nameFrame.setLocationRelativeTo(null);  // Centrer la fenêtre
+
+        // Créer un champ de texte pour entrer le nom
+        JTextField nameField = new JTextField(15);
         
-        // Calcul de la largeur et de la hauteur de la fenêtre du jeu en fonction du nombre de lignes et colonnes
-        int boardWidth = columnCount * tileSize; // Largeur de la fenêtre en pixels (19 colonnes * 32 pixels)
-        int boardHeight = rowCount * tileSize; // Hauteur de la fenêtre en pixels (21 lignes * 32 pixels)
+        // Créer un bouton pour soumettre le nom
+        JButton submitButton = new JButton("Inscrire");
 
-         // Création d'un objet JFrame (fenêtre graphique) pour le jeu Pac-Man
-        JFrame frame = new JFrame("Pac Man"); // Création d'une fenêtre avec le titre "Pac Man"
+        // Ajouter un écouteur d'événement au bouton
+        submitButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String playerName = nameField.getText().trim();
 
-        // frame.setVisible(true);  // Cette ligne est commentée. Si activée, elle rendrait la fenêtre visible immédiatement.
+                // Si le champ est vide, utiliser un nom par défaut
+                if (playerName.isEmpty()) {
+                    playerName = "Joueur";
+                }
 
-        // Définition de la taille de la fenêtre
-        frame.setSize(boardWidth, boardHeight);
+                // Fermer la fenêtre de saisie du nom
+                nameFrame.dispose();
 
-       // Centrer la fenêtre sur l'écran
-        frame.setLocationRelativeTo(null); // Positionne la fenêtre au centre de l'écran.
+                // Créer une nouvelle fenêtre pour le jeu
+                int rowCount = 21;
+                int columnCount = 19;
+                int tileSize = 32;
+                int boardWidth = columnCount * tileSize;
+                int boardHeight = rowCount * tileSize;
 
-        // Désactive le redimensionnement de la fenêtre (l'utilisateur ne peut pas agrandir ou réduire la taille de la fenêtre)
-        frame.setResizable(false);
+                // Créer la fenêtre principale du jeu PacMan
+                JFrame gameFrame = new JFrame("Pac Man");
+                gameFrame.setSize(boardWidth, boardHeight);
+                gameFrame.setLocationRelativeTo(null);
+                gameFrame.setResizable(false);
+                gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Définit le comportement de la fenêtre lorsqu'on clique sur le bouton de fermeture (ferme l'application)
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                // Créer l'objet PacMan 
+                PacMan pacmanGame = new PacMan();
 
-        // Création d'une instance de la classe PacMan (c'est probablement un composant graphique personnalisé qui contient la logique du jeu)
-        PacMan pacmanGame = new PacMan();
+                // Ajouter le jeu à la fenêtre
+                gameFrame.add(pacmanGame);
 
-        // Ajoute l'objet `pacmanGame` à la fenêtre. Cela permettra à l'interface graphique de PacMan d'apparaître dans la fenêtre.
-        frame.add(pacmanGame);
+                // Afficher la fenêtre du jeu
+                gameFrame.setVisible(true);
+            }
+        });
 
-         // Ajuste la fenêtre pour s'adapter au contenu (bien que la taille de la fenêtre soit déjà définie manuellement)
-        frame.pack();
+        // Créer un panneau pour contenir le champ de texte et le bouton
+        JPanel panel = new JPanel();
+        panel.add(new JLabel("Entrez votre nom :"));
+        panel.add(nameField);
+        panel.add(submitButton);
 
-        // Demande à ce que l'objet pacmanGame reçoive les événements de clavier (cela permet de contrôler Pacman avec le clavier)
-        pacmanGame.requestFocus();
-
-        // Rendre la fenêtre visible, ce qui lance l'affichage de l'interface graphique
-        frame.setVisible(true);
-
+        // Ajouter le panneau à la fenêtre
+        nameFrame.add(panel);
+        
+        // Afficher la fenêtre de saisie du nom
+        nameFrame.setVisible(true);
     }
 }
