@@ -110,4 +110,21 @@ public class App {
         // Afficher la fenêtre de saisie du nom
         nameFrame.setVisible(true);
     }
+    public static void playMusic(String filePath) {
+        try {
+            // Charger le fichier audio
+            AudioInputStream audioStream = AudioSystem.getAudioInputStream(new File(filePath));
+
+            // Obtenir le clip audio
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioStream);
+
+            // Jouer la musique
+            clip.start();
+            // Attendre la fin de la lecture (simplement attendre la durée du clip)
+            Thread.sleep(clip.getMicrosecondLength() / 1000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
