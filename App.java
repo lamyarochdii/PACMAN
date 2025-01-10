@@ -95,6 +95,10 @@ public class App {
                 // Ajouter le jeu à la fenêtre
                 gameFrame.add(pacmanGame);
 
+                //Musique
+                String filePath = "Pac-Man-Theme-Original.wav";
+                new Thread(() -> playMusic(filePath)).start();
+
                 // Afficher la fenêtre du jeu
                 gameFrame.setVisible(true);
             }
