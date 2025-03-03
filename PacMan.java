@@ -7,13 +7,14 @@ import javax.swing.*; // Bibliothèque Swing, utilisée pour créer des interfac
 
 // La classe principale du programme, représentant l'ensemble du jeu Pac-Man
 public class PacMan extends JPanel implements ActionListener, KeyListener {
-    // **Remarque :** `JPanel` est un conteneur graphique, et `ActionListener` / `KeyListener` sont des interfaces
+    //*Remarque : `JPanel` est un conteneur graphique, et `ActionListener` / `KeyListener` sont des interfaces
     // qui permettent de répondre aux événements comme les entrées clavier ou les temporisations.
-
+    //private String playerName;
+    //private String playerSurname;
     // Classe interne représentant un bloc sur le plateau de jeu (mur, nourriture, Pac-Man ou fantôme)
     class Block {
-        int x;
-        int y;
+        int x;//position d'un objet en x
+        int y; //position d'un objet en y
         int width; // largeur d'un bloc
         int height; // hauteur d'un bloc 
         Image image;  // Image associée au bloc pour l'affichage graphique
@@ -78,6 +79,7 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
                 this.velocityX = tileSize/4;
                 this.velocityY = 0;
             }
+            //tileSize/4 signifie que la vitesse est un quart de la taille d'un "tile" (case).
         }
 
         // Méthode : Réinitialise la position du bloc à ses coordonnées de départ
@@ -146,6 +148,8 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
 
     // Constructeur de la classe PacMan
     PacMan() {
+        //this.playerName = name;
+        //this.playerSurname = surname;
         // Définit la taille du panneau de jeu en fonction de la largeur et de la hauteur du plateau
         setPreferredSize(new Dimension(boardWidth, boardHeight));
         // Définit le fond d'écran du jeu en noir
@@ -282,48 +286,57 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        //check ghost collisions
+        // Vérification des collisions avec les fantômes
         for (Block ghost : ghosts) {
             if (collision(ghost, pacman)) {
-                lives -= 1;
-                if (lives == 0) {
+                lives -= 1; // Réduit les vies de 1 si Pacman entre en collision avec un fantôme
+                if (lives == 0) { // Si Pacman n'a plus de vies, la partie est terminée
                     gameOver = true;
                     return;
                 }
-                resetPositions();
+                resetPositions();  // Si Pacman perd une vie, réinitialise les positions des personnages
             }
 
+            // Si le fantôme atteint la ligne horizontale de la zone du jeu (niveau du bas), change de direction
             if (ghost.y == tileSize*9 && ghost.direction != 'U' && ghost.direction != 'D') {
-                ghost.updateDirection('U');
+                ghost.updateDirection('U'); // Le fantôme se dirige vers le haut
             }
+            // Mise à jour de la position du fantôme en fonction de sa vitesse
             ghost.x += ghost.velocityX;
             ghost.y += ghost.velocityY;
+
+             // Vérification des collisions avec les murs
             for (Block wall : walls) {
+                // Si le fantôme entre en collision avec un mur ou dépasse les limites du jeu, il inverse sa direction
                 if (collision(ghost, wall) || ghost.x <= 0 || ghost.x + ghost.width >= boardWidth) {
-                    ghost.x -= ghost.velocityX;
-                    ghost.y -= ghost.velocityY;
-                    char newDirection = directions[random.nextInt(4)];
-                    ghost.updateDirection(newDirection);
+                    ghost.x -= ghost.velocityX; // Annule le mouvement du fantôme sur l'axe X
+                    ghost.y -= ghost.velocityY;// Annule le mouvement du fantôme sur l'axe Y
+                    char newDirection = directions[random.nextInt(4)]; // Choisit une nouvelle direction aléatoire
+                    ghost.updateDirection(newDirection); // Choisit une nouvelle direction aléatoire
                 }
             }
         }
 
-        //check food collision
+        // Vérification des collisions avec la nourriture
         Block foodEaten = null;
         for (Block food : foods) {
             if (collision(pacman, food)) {
-                foodEaten = food;
-                score += 10;
+                foodEaten = food; // Enregistre la nourriture que Pacman a mangée
+                score += 10;// Augmente le score de 10 points
             }
         }
+
+        // Retirer la nourriture mangée de la liste
         foods.remove(foodEaten);
 
+        // Si toute la nourriture a été mangée, on recharge la carte et réinitialise les positions
         if (foods.isEmpty()) {
-            loadMap();
-            resetPositions();
+            loadMap();  // Recharge la carte du jeu
+            resetPositions(); // Réinitialise les positions des personnages
         }
     }
 
+    // Méthode pour vérifier les collisions entre deux objets (Pacman ou un fantôme)
     public boolean collision(Block a, Block b) {
         return  a.x < b.x + b.width &&
                 a.x + a.width > b.x &&
@@ -331,56 +344,72 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
                 a.y + a.height > b.y;
     }
 
+    // Réinitialise les positions de Pacman et des fantômes
     public void resetPositions() {
-        pacman.reset();
-        pacman.velocityX = 0;
-        pacman.velocityY = 0;
+        pacman.reset(); // Réinitialise Pacman à sa position de départ
+        pacman.velocityX = 0;  // Réinitialise la vitesse de Pacman
+        pacman.velocityY = 0; // Réinitialise la vitesse de Pacman
         for (Block ghost : ghosts) {
-            ghost.reset();
-            char newDirection = directions[random.nextInt(4)];
-            ghost.updateDirection(newDirection);
+            ghost.reset(); // Réinitialise la position du fantôme
+            char newDirection = directions[random.nextInt(4)]; // Choisit une nouvelle direction aléatoire pour le fantôme
+            ghost.updateDirection(newDirection);  // Met à jour la direction du fantôme
         }
     }
 
+    //Gérer les événements d'action du jeu
     @Override
     public void actionPerformed(ActionEvent e) {
-        move();
-        repaint();
-        if (gameOver) {
+        move(); // Effectue le déplacement de Pacman et des fantômes
+        repaint(); // Rafraîchit l'affichage du jeu
+        if (gameOver) { // Si la partie est terminée, arrête la boucle du jeu
             gameLoop.stop();
         }
     }
 
+
+    //Gestion des événements du clavier
     @Override
-    public void keyTyped(KeyEvent e) {}
+    public void keyTyped(KeyEvent e) {
+    // Cette méthode est appelée lorsque l'utilisateur appuie sur une touche du clavier.
+    // Cependant, dans ce code, elle n'est pas utilisée, donc elle reste vide.
+    }
 
     @Override
-    public void keyPressed(KeyEvent e) {}
+    public void keyPressed(KeyEvent e) {
+         // Cette méthode est appelée dès qu'une touche est enfoncée.
+         // Cependant, dans ce code, elle n'est pas utilisée, donc elle reste vide.
+    }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (gameOver) {
-            loadMap();
-            resetPositions();
-            lives = 3;
-            score = 0;
-            gameOver = false;
-            gameLoop.start();
+         // Cette méthode est appelée lorsque l'utilisateur relâche une touche du clavier.
+        if (gameOver) { // Si le jeu est terminé (gameOver est vrai)
+            loadMap();  // Recharge la carte du jeu, probablement pour redémarrer le niveau ou le jeu
+            resetPositions(); // Réinitialise les positions de Pacman et des fantômes
+            lives = 3;  // Réinitialise le nombre de vies à 3 
+            score = 0; // Réinitialise le score à 0
+            gameOver = false; // Met fin à l'état de "game over"
+            gameLoop.start();  // Redémarre la boucle du jeu (démarre l'animation et la logique du jeu)
         }
+
+        // Gestion des déplacements de Pacman en fonction des touches directionnelles
         // System.out.println("KeyEvent: " + e.getKeyCode());
         if (e.getKeyCode() == KeyEvent.VK_UP) {
-            pacman.updateDirection('U');
+            pacman.updateDirection('U'); // Si la touche "flèche haut" est pressée, Pacman se déplace vers le haut
         }
         else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-            pacman.updateDirection('D');
+            pacman.updateDirection('D');  // Si la touche "flèche bas" est pressée, Pacman se déplace vers le bas
         }
         else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-            pacman.updateDirection('L');
+            pacman.updateDirection('L'); // Si la touche "flèche gauche" est pressée, Pacman se déplace vers la gauche
         }
         else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
             pacman.updateDirection('R');
         }
 
+
+        // Change l'image de Pacman en fonction de sa direction actuelle.
+    // Cela est fait pour donner l'impression que Pacman "regarde" dans la direction qu'il prend.
         if (pacman.direction == 'U') {
             pacman.image = pacmanUpImage;
         }
