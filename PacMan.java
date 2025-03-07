@@ -1,3 +1,4 @@
+
 import java.awt.*; // Fournit des classes pour la gestion des éléments graphiques (images, couleurs, tailles, etc.)
 import java.awt.event.*;// Permet la gestion des événements comme les clics, les frappes clavier, et les temporisations
 import java.util.HashSet; // Collection qui stocke des objets uniques, utile pour gérer des ensembles de murs, de nourriture, etc.
@@ -11,7 +12,10 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     // qui permettent de répondre aux événements comme les entrées clavier ou les temporisations.
     //private String playerName;
     //private String playerSurname;
-    // Classe interne représentant un bloc sur le plateau de jeu (mur, nourriture, Pac-Man ou fantôme)
+   
+ // Classe interne représentant un bloc sur le plateau de jeu (mur, nourriture, Pac-Man ou fantôme)
+
+
     class Block {
         int x;//position d'un objet en x
         int y; //position d'un objet en y
@@ -90,11 +94,13 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     }
 
 // Dimensions du plateau de jeu
-    private int rowCount = 21; // Nombre de lignes dans la carte
-    private int columnCount = 19;  // Nombre de colonnes dans la carte
-    private int tileSize = 32; // Taille d'une case (en pixels)
-    private int boardWidth = columnCount * tileSize;
-    private int boardHeight = rowCount * tileSize;
+private int rowCount = 19;  // Avant c'était 21, maintenant c'est 20
+private int columnCount = 19;  // La largeur reste 19 colonnes
+private int tileSize = 32;  // Chaque case fait 32 pixels
+
+private int boardWidth = columnCount * tileSize;  // Largeur totale du jeu
+private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
+
 
     private Image wallImage;
     private Image blueGhostImage;
@@ -106,6 +112,10 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     private Image pacmanDownImage;
     private Image pacmanLeftImage;
     private Image pacmanRightImage;
+    private Image cherryImage; // 🍒 Image des cerises
+    private Image blackWallImage;
+
+
 
     //X = wall, O = skip, P = pac man, ' ' = food
     //Ghosts: b = blue, o = orange, p = pink, r = red
@@ -117,22 +127,23 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         "X XX X XXXXX X XX X",
         "X    X       X    X",
         "XXXX XXXX XXXX XXXX",
-        "OOOX X       X XOOO",
+        " OOX X       X XOO ",
         "XXXX X XXrXX X XXXX",
-        "O       bpo       O",
+        "X       bpo       X",
         "XXXX X XXXXX X XXXX",
-        "OOOX X       X XOOO",
+        " OOX X       X XOO ",
         "XXXX X XXXXX X XXXX",
         "X        X        X",
         "X XX XXX X XXX XX X",
         "X  X     P     X  X",
         "XX X X XXXXX X X XX",
         "X    X   X   X    X",
-        "X XXXXXX X XXXXXX X",
-        "X                 X",
-        "XXXXXXXXXXXXXXXXXXX" 
+        "                   ", // ✅ Aucune case de mur ici
+        "                   "  // ✅ Aucune case de mur ici
     };
+    
 
+    
     // Structures de données pour stocker les blocs du jeu
     HashSet<Block> walls; // Ensemble des blocs représentant les murs
     HashSet<Block> foods;
@@ -146,6 +157,8 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     int lives = 3; // Nombre de vies restantes
     boolean gameOver = false; // Indique si le jeu est terminé
 
+    private JButton exitButton;
+
     // Constructeur de la classe PacMan
     PacMan() {
         //this.playerName = name;
@@ -158,6 +171,27 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         addKeyListener(this);
         // Rend le panneau focusable pour capturer les événements clavier
         setFocusable(true);
+        //this.setLayout(new BorderLayout());
+        // Créer un JPanel pour le bouton "Exit"
+       // JPanel bottomPanel = new JPanel();
+        //bottomPanel.setLayout(new FlowLayout(FlowLayout.LEFT)); // Aligner le bouton à gauche
+
+        this.setLayout(null);
+
+        // Créer le bouton "Exit"
+        exitButton = new JButton("Exit");
+        exitButton.setBounds(boardWidth - 200, boardHeight - 40, 80, 30); //
+        this.add(exitButton);
+        this.setVisible(true);
+
+       // bottomPanel.add(exitButton);
+
+        // Ajouter le panel avec le bouton "Exit" en bas
+       // this.add(bottomPanel, BorderLayout.SOUTH);
+
+        // Afficher la fenêtre
+       // this.pack();
+        this.setVisible(true);
 
         //load images
         wallImage = new ImageIcon(getClass().getResource("./wall.png")).getImage();
@@ -170,6 +204,9 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         pacmanDownImage = new ImageIcon(getClass().getResource("./pacmanDown.png")).getImage();
         pacmanLeftImage = new ImageIcon(getClass().getResource("./pacmanLeft.png")).getImage();
         pacmanRightImage = new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage();
+        cherryImage = new ImageIcon(getClass().getResource("./cherry.png")).getImage();
+        blackWallImage = new ImageIcon(getClass().getResource("./blackWall.png")).getImage();
+
 
         // Charge la carte initiale du jeu à partir des données du tableau
         loadMap();
@@ -189,51 +226,64 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     // Méthode pour charger la carte du jeu
     public void loadMap() {
         // Initialise les ensembles de murs, de nourriture et de fantômes
-        walls = new HashSet<Block>();
-        foods = new HashSet<Block>();
-        ghosts = new HashSet<Block>();
-
+        walls = new HashSet<>();
+        foods = new HashSet<>();
+        ghosts = new HashSet<>();
+    
         // Parcourt chaque ligne et colonne de la carte
         for (int r = 0; r < rowCount; r++) {
             for (int c = 0; c < columnCount; c++) {
                 String row = tileMap[r]; // Récupère la ligne actuelle de la carte
                 char tileMapChar = row.charAt(c); // Caractère représentant un type d'objet (mur, nourriture, fantôme, etc.)
-
+    
                 // Calcule les coordonnées de l'objet en fonction de sa position sur la carte
-                int x = c*tileSize;
-                int y = r*tileSize;
-
-                 // Vérifie quel type d'objet représente le caractère
-                if (tileMapChar == 'X') { //block wall
+                int x = c * tileSize;
+                int y = r * tileSize;
+    
+                // Vérifie quel type d'objet représente le caractère
+                if (tileMapChar == 'X') { // Mur bleu
                     Block wall = new Block(wallImage, x, y, tileSize, tileSize);
                     walls.add(wall);
-                }
-                else if (tileMapChar == 'b') { //blue ghost
+                } 
+                else if (tileMapChar == 'b') { // Fantôme bleu
                     Block ghost = new Block(blueGhostImage, x, y, tileSize, tileSize);
                     ghosts.add(ghost);
-                }
-                else if (tileMapChar == 'o') { //orange ghost
+                } 
+                else if (tileMapChar == 'o') { // Fantôme orange
                     Block ghost = new Block(orangeGhostImage, x, y, tileSize, tileSize);
                     ghosts.add(ghost);
-                }
-                else if (tileMapChar == 'p') { //pink ghost
+                } 
+                else if (tileMapChar == 'p') { // Fantôme rose
                     Block ghost = new Block(pinkGhostImage, x, y, tileSize, tileSize);
                     ghosts.add(ghost);
-                }
-                else if (tileMapChar == 'r') { //red ghost
+                } 
+                else if (tileMapChar == 'r') { // Fantôme rouge
                     Block ghost = new Block(redGhostImage, x, y, tileSize, tileSize);
                     ghosts.add(ghost);
-                }
-                else if (tileMapChar == 'P') { //pacman
+                } 
+                else if (tileMapChar == 'P') { // Pac-Man
                     pacman = new Block(pacmanRightImage, x, y, tileSize, tileSize);
-                }
-                else if (tileMapChar == ' ') { //food
+                } 
+                else if (tileMapChar == ' ' && r < rowCount - 2) { // Nourriture blanche (PAS sur les 2 dernières lignes)
                     Block food = new Block(null, x + 14, y + 14, 4, 4);
                     foods.add(food);
                 }
             }
         }
+    
+        // 🔥 Ajout de murs noirs invisibles sur les 2 dernières lignes
+        for (int r = rowCount - 2; r < rowCount; r++) { // Parcourt les 2 dernières lignes
+            for (int c = 0; c < columnCount; c++) {
+                int x = c * tileSize;
+                int y = r * tileSize;
+                Block blackWall = new Block(null, x, y, tileSize, tileSize); // Mur invisible
+                walls.add(blackWall);
+            }
+        }
     }
+    
+    
+    
 
     // Méthode pour dessiner les éléments du jeu
     public void paintComponent(Graphics g) {
@@ -242,34 +292,51 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     }
 
     public void draw(Graphics g) {
+
+        // 🍒 Dessiner les cerises (vies restantes)
+        for (int i = 0; i < lives; i++) {
+            g.drawImage(cherryImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
+        }
+    
         // Dessine Pac-Man à ses coordonnées actuelles
         g.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height, null);
-
-         // Dessine les fantômes
+    
+        // Dessine les fantômes
         for (Block ghost : ghosts) {
             g.drawImage(ghost.image, ghost.x, ghost.y, ghost.width, ghost.height, null);
         }
-
+    
         // Dessine les murs 
         for (Block wall : walls) {
             g.drawImage(wall.image, wall.x, wall.y, wall.width, wall.height, null);
         }
-
+    
         // Dessine la nourriture sous forme de petits rectangles blancs
         g.setColor(Color.WHITE);
         for (Block food : foods) {
             g.fillRect(food.x, food.y, food.width, food.height);
         }
-
-       // Affiche le score et le nombre de vies restantes
+    
+        // 🏆 Affiche le score en bas à droite
         g.setFont(new Font("Arial", Font.PLAIN, 18));
+        g.setColor(Color.WHITE);
+        g.drawString("Score: " + score, boardWidth - 100, boardHeight - 10);
+       
+
+    
+        // 💀 Affichage du "Game Over" en GRAND au milieu
         if (gameOver) {
-            g.drawString("Game Over: " + String.valueOf(score), tileSize/2, tileSize/2);
+            g.setFont(new Font("Arial", Font.BOLD, 50)); // Police grande et en gras
+            g.setColor(Color.RED); // Couleur rouge pour bien signaler le Game Over
+            String message = "GAME OVER";
+            int textWidth = g.getFontMetrics().stringWidth(message); // Calcul de la largeur du texte
+            int textHeight = g.getFontMetrics().getHeight(); // Hauteur du texte
+            g.drawString(message, (boardWidth - textWidth) / 2, (boardHeight - textHeight) / 2);
         }
-        else {
-            g.drawString("x" + String.valueOf(lives) + " Score: " + String.valueOf(score), tileSize/2, tileSize/2);
-        }
+
+       
     }
+    
 
     // Méthode pour déplacer Pac-Man et les fantômes
     public void move() {
@@ -424,3 +491,6 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         }
     }
 }
+
+
+
