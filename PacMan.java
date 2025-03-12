@@ -1,10 +1,12 @@
 
 import java.awt.*; // Fournit des classes pour la gestion des éléments graphiques (images, couleurs, tailles, etc.)
 import java.awt.event.*;// Permet la gestion des événements comme les clics, les frappes clavier, et les temporisations
+import java.util.ArrayList;
 import java.util.HashSet; // Collection qui stocke des objets uniques, utile pour gérer des ensembles de murs, de nourriture, etc.
 import java.util.Random; // Générateur de nombres aléatoires, utilisé ici pour les déplacements aléatoires des fantômes
 import javax.swing.*; // Bibliothèque Swing, utilisée pour créer des interfaces graphiques (panneaux, timers, images)
-
+import java.util.List; // Importe l'interface List
+import java.util.ArrayList; // Importe la classe ArrayList
 
 // La classe principale du programme, représentant l'ensemble du jeu Pac-Man
 public class PacMan extends JPanel implements ActionListener, KeyListener {
@@ -127,11 +129,11 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
         "X XX X XXXXX X XX X",
         "X    X       X    X",
         "XXXX XXXX XXXX XXXX",
-        " OOX X       X XOO ",
+        "XOOX X       X XOOX",
         "XXXX X XXrXX X XXXX",
         "X       bpo       X",
         "XXXX X XXXXX X XXXX",
-        " OOX X       X XOO ",
+        "XOOX X       X XOOX",
         "XXXX X XXXXX X XXXX",
         "X        X        X",
         "X XX XXX X XXX XX X",
@@ -292,7 +294,6 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     }
 
     public void draw(Graphics g) {
-
         // 🍒 Dessiner les cerises (vies restantes)
         for (int i = 0; i < lives; i++) {
             g.drawImage(cherryImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
@@ -317,90 +318,123 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
             g.fillRect(food.x, food.y, food.width, food.height);
         }
     
+        // Dessine les cerises
+        for (Block cherry : cherries) {
+            g.drawImage(cherry.image, cherry.x, cherry.y, cherry.width, cherry.height, null);
+        }
+    
         // 🏆 Affiche le score en bas à droite
         g.setFont(new Font("Arial", Font.PLAIN, 18));
         g.setColor(Color.WHITE);
         g.drawString("Score: " + score, boardWidth - 100, boardHeight - 10);
-       
-
     
         // 💀 Affichage du "Game Over" en GRAND au milieu
         if (gameOver) {
-            g.setFont(new Font("Arial", Font.BOLD, 50)); // Police grande et en gras
-            g.setColor(Color.RED); // Couleur rouge pour bien signaler le Game Over
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.setColor(Color.RED);
             String message = "GAME OVER";
-            int textWidth = g.getFontMetrics().stringWidth(message); // Calcul de la largeur du texte
-            int textHeight = g.getFontMetrics().getHeight(); // Hauteur du texte
+            int textWidth = g.getFontMetrics().stringWidth(message);
+            int textHeight = g.getFontMetrics().getHeight();
             g.drawString(message, (boardWidth - textWidth) / 2, (boardHeight - textHeight) / 2);
         }
-
-       
     }
     
+private List<Block> cherries = new ArrayList<>(); // Liste des cerises
+private boolean cherrySpawned = false; // Pour éviter de faire apparaître plusieurs cerises
+
+private void spawnCherry() {
+    if (!foods.isEmpty()) {
+        List<Block> foodList = new ArrayList<>(foods); // Convertir le HashSet en ArrayList
+        Random rand = new Random();
+        int randomIndex = rand.nextInt(foodList.size()); // Index aléatoire
+        Block randomFood = foodList.get(randomIndex); // Pastille aléatoire
+
+        // Crée une cerise à la position de la pastille
+        Block cherry = new Block(cherryImage, randomFood.x, randomFood.y, 20, 20);
+        cherries.add(cherry); // Ajoute la cerise à la liste
+        foods.remove(randomFood); // Retire la pastille de la liste des pastilles
+    }
+}
+
+
 
     // Méthode pour déplacer Pac-Man et les fantômes
     public void move() {
         // Déplacement de Pac-Man selon sa vélocité actuelle
         pacman.x += pacman.velocityX;
         pacman.y += pacman.velocityY;
-
-        //check wall collisions
+    
+        // Vérification des collisions avec les murs
         for (Block wall : walls) {
-            if (collision(pacman, wall)) { // Si Pac-Man touche un mur
-                pacman.x -= pacman.velocityX;// Annule le déplacement
+            if (collision(pacman, wall)) {
+                pacman.x -= pacman.velocityX;
                 pacman.y -= pacman.velocityY;
                 break;
             }
         }
-
+    
         // Vérification des collisions avec les fantômes
         for (Block ghost : ghosts) {
             if (collision(ghost, pacman)) {
-                lives -= 1; // Réduit les vies de 1 si Pacman entre en collision avec un fantôme
-                if (lives == 0) { // Si Pacman n'a plus de vies, la partie est terminée
+                lives -= 1;
+                if (lives == 0) {
                     gameOver = true;
                     return;
                 }
-                resetPositions();  // Si Pacman perd une vie, réinitialise les positions des personnages
+                resetPositions();
             }
-
-            // Si le fantôme atteint la ligne horizontale de la zone du jeu (niveau du bas), change de direction
-            if (ghost.y == tileSize*9 && ghost.direction != 'U' && ghost.direction != 'D') {
-                ghost.updateDirection('U'); // Le fantôme se dirige vers le haut
+    
+            if (ghost.y == tileSize * 9 && ghost.direction != 'U' && ghost.direction != 'D') {
+                ghost.updateDirection('U');
             }
-            // Mise à jour de la position du fantôme en fonction de sa vitesse
             ghost.x += ghost.velocityX;
             ghost.y += ghost.velocityY;
-
-             // Vérification des collisions avec les murs
+    
             for (Block wall : walls) {
-                // Si le fantôme entre en collision avec un mur ou dépasse les limites du jeu, il inverse sa direction
                 if (collision(ghost, wall) || ghost.x <= 0 || ghost.x + ghost.width >= boardWidth) {
-                    ghost.x -= ghost.velocityX; // Annule le mouvement du fantôme sur l'axe X
-                    ghost.y -= ghost.velocityY;// Annule le mouvement du fantôme sur l'axe Y
-                    char newDirection = directions[random.nextInt(4)]; // Choisit une nouvelle direction aléatoire
-                    ghost.updateDirection(newDirection); // Choisit une nouvelle direction aléatoire
+                    ghost.x -= ghost.velocityX;
+                    ghost.y -= ghost.velocityY;
+                    char newDirection = directions[random.nextInt(4)];
+                    ghost.updateDirection(newDirection);
                 }
             }
         }
-
+    
         // Vérification des collisions avec la nourriture
         Block foodEaten = null;
         for (Block food : foods) {
             if (collision(pacman, food)) {
                 foodEaten = food; // Enregistre la nourriture que Pacman a mangée
-                score += 10;// Augmente le score de 10 points
+                score += 10; // Augmente le score de 10 points
             }
         }
-
+    
         // Retirer la nourriture mangée de la liste
         foods.remove(foodEaten);
-
+    
+        // Si le score atteint 250 et qu'aucune cerise n'a été générée, fait apparaître une cerise
+        if (score >= 250 && !cherrySpawned) {
+            spawnCherry();
+            cherrySpawned = true; // Empêche la cerise de réapparaître
+            
+        }
+    
         // Si toute la nourriture a été mangée, on recharge la carte et réinitialise les positions
         if (foods.isEmpty()) {
-            loadMap();  // Recharge la carte du jeu
-            resetPositions(); // Réinitialise les positions des personnages
+            loadMap();
+            resetPositions();
         }
+        // Vérification des collisions avec les cerises
+Block cherryEaten = null;
+for (Block cherry : cherries) {
+    if (collision(pacman, cherry)) {
+        cherryEaten = cherry; // Enregistre la cerise que Pacman a mangée
+        score += 100; // Augmente le score de 100 points (ou une autre valeur)
+    }
+}
+
+// Retirer la cerise mangée de la liste
+cherries.remove(cherryEaten);
     }
 
     // Méthode pour vérifier les collisions entre deux objets (Pacman ou un fantôme)
