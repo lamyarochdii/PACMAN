@@ -71,43 +71,46 @@ public class App {
             public void actionPerformed(ActionEvent e) {
                 String playerName = nameField.getText().trim();
                 String password = new String(passwordField.getPassword()).trim();
-
-                // Si le champ est vide, utiliser un nom par défaut
+        
                 if (playerName.isEmpty()) {
                     playerName = "Joueur";
                 }
-
-                // Fermer la fenêtre de saisie du nom
+        
+                // Fermer la fenêtre d'inscription
                 nameFrame.dispose();
-
-                // Créer une nouvelle fenêtre pour le jeu
-                int rowCount = 21;
-                int columnCount = 19;
-                int tileSize = 32;
-                int boardWidth = columnCount * tileSize;
-                int boardHeight = rowCount * tileSize;
-
-                // Créer la fenêtre principale du jeu PacMan
-                JFrame gameFrame = new JFrame("Pac Man");
-                gameFrame.setSize(boardWidth, boardHeight);
-                gameFrame.setLocationRelativeTo(null);
-                gameFrame.setResizable(false);
-                gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-                // Créer l'objet PacMan 
-                PacMan pacmanGame = new PacMan();
-
-                // Ajouter le jeu à la fenêtre
-                gameFrame.add(pacmanGame);
-
-                //Musique
-                String filePath = "Pac-Man-Theme-Original.wav";
-                new Thread(() -> playMusic(filePath)).start();
-
-                // Afficher la fenêtre du jeu
-                gameFrame.setVisible(true);
+        
+                // 👉 Nouvelle fenêtre pour choisir le personnage
+                JFrame characterFrame = new JFrame("Choisissez votre personnage");
+                characterFrame.setSize(300, 200);
+                characterFrame.setLocationRelativeTo(null);
+                characterFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+                JPanel characterPanel = new JPanel(new GridLayout(3, 1, 10, 10));
+                JLabel chooseLabel = new JLabel("Choisissez votre personnage :", SwingConstants.CENTER);
+                JButton pacmanButton = new JButton("Pacman");
+                JButton ladyPacmanButton = new JButton("LadyPacman");
+        
+                characterPanel.add(chooseLabel);
+                characterPanel.add(pacmanButton);
+                characterPanel.add(ladyPacmanButton);
+        
+                characterFrame.add(characterPanel);
+                characterFrame.setVisible(true);
+        
+                // 👉 Action bouton Pacman
+                pacmanButton.addActionListener(evt -> {
+                    characterFrame.dispose();
+                    launchGame("pacman");  // méthode séparée pour lancer le jeu
+                });
+        
+                // 👉 Action bouton LadyPacman
+                ladyPacmanButton.addActionListener(evt -> {
+                    characterFrame.dispose();
+                    launchGame("ladypacman");  // méthode séparée pour lancer le jeu
+                });
             }
         });
+        
 
         // Ajouter le panneau à la fenêtre
         nameFrame.add(panel);
@@ -115,6 +118,29 @@ public class App {
         // Afficher la fenêtre de saisie du nom
         nameFrame.setVisible(true);
     }
+
+    public static void launchGame(String characterChoice) {
+        int rowCount = 21;
+        int columnCount = 19;
+        int tileSize = 32;
+        int boardWidth = columnCount * tileSize;
+        int boardHeight = rowCount * tileSize;
+    
+        JFrame gameFrame = new JFrame("Pac Man");
+        gameFrame.setSize(boardWidth, boardHeight);
+        gameFrame.setLocationRelativeTo(null);
+        gameFrame.setResizable(false);
+        gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    
+        PacMan pacmanGame = new PacMan(characterChoice); // 👈 Passe le personnage ici
+        gameFrame.add(pacmanGame);
+    
+        String filePath = "Pac-Man-Theme-Original.wav";
+        new Thread(() -> playMusic(filePath)).start();
+    
+        gameFrame.setVisible(true);
+    }
+    
     public static void playMusic(String filePath) {
         try {
             // Charger le fichier audio
@@ -133,3 +159,6 @@ public class App {
         }
     }
 }
+
+
+
