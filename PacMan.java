@@ -162,7 +162,21 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private JButton exitButton;
 
     // Constructeur de la classe PacMan
-    PacMan() {
+    String selectedCharacter;
+    public PacMan(String selectedCharacter) {
+        this.selectedCharacter = selectedCharacter;
+        if (selectedCharacter.equals("ladypacman")) {
+            pacmanUpImage = new ImageIcon(getClass().getResource("./ladyPacmanUp.png")).getImage();
+            pacmanDownImage = new ImageIcon(getClass().getResource("./ladyPacmanDown.png")).getImage();
+            pacmanLeftImage = new ImageIcon(getClass().getResource("./ladyPacmanLeft.png")).getImage();
+            pacmanRightImage = new ImageIcon(getClass().getResource("./ladyPacmanRight.png")).getImage();
+        } else {
+            pacmanUpImage = new ImageIcon(getClass().getResource("./pacmanUp.png")).getImage();
+            pacmanDownImage = new ImageIcon(getClass().getResource("./pacmanDown.png")).getImage();
+            pacmanLeftImage = new ImageIcon(getClass().getResource("./pacmanLeft.png")).getImage();
+            pacmanRightImage = new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage();
+        }
+        
         //this.playerName = name;
         //this.playerSurname = surname;
         // Définit la taille du panneau de jeu en fonction de la largeur et de la hauteur du plateau
@@ -202,10 +216,7 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
         pinkGhostImage = new ImageIcon(getClass().getResource("./pinkGhost.png")).getImage();
         redGhostImage = new ImageIcon(getClass().getResource("./redGhost.png")).getImage();
 
-        pacmanUpImage = new ImageIcon(getClass().getResource("./pacmanUp.png")).getImage();
-        pacmanDownImage = new ImageIcon(getClass().getResource("./pacmanDown.png")).getImage();
-        pacmanLeftImage = new ImageIcon(getClass().getResource("./pacmanLeft.png")).getImage();
-        pacmanRightImage = new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage();
+       
         cherryImage = new ImageIcon(getClass().getResource("./cherry.png")).getImage();
         blackWallImage = new ImageIcon(getClass().getResource("./blackWall.png")).getImage();
 
@@ -263,9 +274,15 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
                     Block ghost = new Block(redGhostImage, x, y, tileSize, tileSize);
                     ghosts.add(ghost);
                 } 
-                else if (tileMapChar == 'P') { // Pac-Man
-                    pacman = new Block(pacmanRightImage, x, y, tileSize, tileSize);
-                } 
+                else if (tileMapChar == 'P') {
+                    // Vérifie si c'est LadyPacman ou Pacman
+                    if (selectedCharacter.equals("ladypacman")) {
+                        pacman = new Block(new ImageIcon(getClass().getResource("./ladyPacmanRight.png")).getImage(), x, y, tileSize, tileSize);
+                    } else {
+                        pacman = new Block(new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage(), x, y, tileSize, tileSize);
+                    }
+                }
+                
                 else if (tileMapChar == ' ' && r < rowCount - 2) { // Nourriture blanche (PAS sur les 2 dernières lignes)
                     Block food = new Block(null, x + 14, y + 14, 4, 4);
                     foods.add(food);
@@ -525,6 +542,5 @@ cherries.remove(cherryEaten);
         }
     }
 }
-
 
 
