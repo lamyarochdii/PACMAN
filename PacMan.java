@@ -120,10 +120,16 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private Image cherryImage; // 🍒 Image des cerises
     private Image blackWallImage;
     private Image frightenedGhostImage;
+    private Image deuxcentImage;
 
     private Image chronometerImage;
 private int frightenedTimeRemaining = 0;
 private Timer frightenedCountdownTimer;
+
+private boolean showDeuxCent = false;
+private long deuxCentDisplayStartTime = 0;
+private int deuxcentX = 0; // Position d'affichage (on peut la centrer sur le ghost mangé)
+private int deuxcentY = 0;
 
 
 
@@ -237,6 +243,7 @@ private List<Block> eatenGhostsDuringFrightened = new ArrayList<>();
         cherryImage = new ImageIcon(getClass().getResource("./cherry.png")).getImage();
         blackWallImage = new ImageIcon(getClass().getResource("./blackWall.png")).getImage();
         chronometerImage = new ImageIcon(getClass().getResource("./chronometer.png")).getImage();
+        deuxcentImage = new ImageIcon(getClass().getResource("./deuxcent.png")).getImage();
 
 
         // Charge la carte initiale du jeu à partir des données du tableau
@@ -391,6 +398,16 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
             int textHeight = g.getFontMetrics().getHeight();
             g.drawString(message, (boardWidth - textWidth) / 2, (boardHeight - textHeight) / 2);
         }
+        // 💥 Affichage de deuxcent.png pendant 2 secondes
+if (showDeuxCent) {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - deuxCentDisplayStartTime <= 1000) {
+        g.drawImage(deuxcentImage, deuxcentX, deuxcentY, null); // taille naturelle
+    } else {
+        showDeuxCent = false;
+    }
+}
+
     }
 
 
@@ -497,7 +514,13 @@ private void spawnCherry() {
                     ghostEaten = ghost;
                     score += 200;
                     System.out.println("SCORE ACTUEL : " + score);
-
+            
+                    // ➕ Afficher l'image deuxcent.png pendant 2 secondes
+                    showDeuxCent = true;
+                    deuxCentDisplayStartTime = System.currentTimeMillis();
+                    deuxcentX = ghost.x;
+                    deuxcentY = ghost.y;
+            
                     eatenGhostsDuringFrightened.add(ghost);
                 } else {
                     lives -= 1;
@@ -508,6 +531,7 @@ private void spawnCherry() {
                     resetPositions();
                 }
             }
+            
         
             if (ghost.y == tileSize * 9 && ghost.direction != 'U' && ghost.direction != 'D') {
                 ghost.updateDirection('U');
