@@ -2,6 +2,7 @@
 import java.awt.*; // Fournit des classes pour la gestion des éléments graphiques (images, couleurs, tailles, etc.)
 import java.awt.event.*;// Permet la gestion des événements comme les clics, les frappes clavier, et les temporisations
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet; // Collection qui stocke des objets uniques, utile pour gérer des ensembles de murs, de nourriture, etc.
 import java.util.Random; // Générateur de nombres aléatoires, utilisé ici pour les déplacements aléatoires des fantômes
 import javax.swing.*; // Bibliothèque Swing, utilisée pour créer des interfaces graphiques (panneaux, timers, images)
@@ -104,6 +105,8 @@ private int boardWidth = columnCount * tileSize;  // Largeur totale du jeu
 private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
 
 
+
+
     private Image wallImage;
     private Image blueGhostImage;
     private Image orangeGhostImage;
@@ -116,6 +119,13 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private Image pacmanRightImage;
     private Image cherryImage; // 🍒 Image des cerises
     private Image blackWallImage;
+    private Image frightenedGhostImage;
+
+    private Image chronometerImage;
+private int frightenedTimeRemaining = 0;
+private Timer frightenedCountdownTimer;
+
+
 
 
 
@@ -151,6 +161,13 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     HashSet<Block> foods;
     HashSet<Block> ghosts;
     Block pacman;
+   
+    private boolean isFrightenedMode = false;
+private Timer frightenedModeTimer;
+private HashMap<Block, Image> originalGhostImages = new HashMap<>();
+private List<Block> eatenGhostsDuringFrightened = new ArrayList<>();
+
+
 
     Timer gameLoop; // Timer pour gérer les mises à jour du jeu à intervalle régulier
     char[] directions = {'U', 'D', 'L', 'R'}; //up down left right
@@ -215,10 +232,11 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
         orangeGhostImage = new ImageIcon(getClass().getResource("./orangeGhost.png")).getImage();
         pinkGhostImage = new ImageIcon(getClass().getResource("./pinkGhost.png")).getImage();
         redGhostImage = new ImageIcon(getClass().getResource("./redGhost.png")).getImage();
-
+        frightenedGhostImage = new ImageIcon(getClass().getResource("./frightenedGhost.png")).getImage();
        
         cherryImage = new ImageIcon(getClass().getResource("./cherry.png")).getImage();
         blackWallImage = new ImageIcon(getClass().getResource("./blackWall.png")).getImage();
+        chronometerImage = new ImageIcon(getClass().getResource("./chronometer.png")).getImage();
 
 
         // Charge la carte initiale du jeu à partir des données du tableau
@@ -315,6 +333,24 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
         for (int i = 0; i < lives; i++) {
             g.drawImage(cherryImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
         }
+        // ⏱️ Affichage du chronomètre uniquement pendant frightened mode
+if (isFrightenedMode && frightenedTimeRemaining > 0) {
+    int chronoX = lives * 30 + 20; // Position après les cerises
+
+    // Fond arrondi derrière le chrono (optionnel)
+    g.setColor(new Color(0, 0, 0, 150));
+    g.fillRoundRect(chronoX - 5, boardHeight - 45, 90, 36, 10, 10);
+
+    // Image chronomètre
+    g.drawImage(chronometerImage, chronoX, boardHeight - chronometerImage.getHeight(null), null);
+
+
+    // Texte blanc du compteur
+    g.setColor(Color.WHITE);
+    g.setFont(new Font("Arial", Font.BOLD, 18));
+    g.drawString(frightenedTimeRemaining + "s", chronoX + 50, boardHeight - 20);
+}
+
     
         // Dessine Pac-Man à ses coordonnées actuelles
         g.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height, null);
@@ -343,7 +379,8 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
         // 🏆 Affiche le score en bas à droite
         g.setFont(new Font("Arial", Font.PLAIN, 18));
         g.setColor(Color.WHITE);
-        g.drawString("Score: " + score, boardWidth - 100, boardHeight - 10);
+        g.drawString("Score: " + score, boardWidth - 120, boardHeight - 10);
+
     
         // 💀 Affichage du "Game Over" en GRAND au milieu
         if (gameOver) {
@@ -355,6 +392,65 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
             g.drawString(message, (boardWidth - textWidth) / 2, (boardHeight - textHeight) / 2);
         }
     }
+
+
+    private void frightenedGhostApparition() {
+        isFrightenedMode = true;
+        frightenedTimeRemaining = 15; // Démarre à 15 secondes
+    
+        // Sauvegarde les images d'origine des fantômes
+        for (Block ghost : ghosts) {
+            originalGhostImages.put(ghost, ghost.image);
+            ghost.image = frightenedGhostImage;
+        }
+    
+        // Timer visuel : décrémenter le chrono toutes les secondes
+        frightenedCountdownTimer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                frightenedTimeRemaining--;
+                if (frightenedTimeRemaining <= 0) {
+                    frightenedCountdownTimer.stop();
+                }
+                repaint(); // Pour forcer l'affichage à jour
+            }
+        });
+        frightenedCountdownTimer.start();
+    
+        // Timer principal de fin du frightened mode
+        frightenedModeTimer = new Timer(15000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                isFrightenedMode = false;
+    
+                for (Block ghost : ghosts) {
+                    if (originalGhostImages.containsKey(ghost)) {
+                        ghost.image = originalGhostImages.get(ghost);
+                    }
+                }
+    
+                for (Block ghost : eatenGhostsDuringFrightened) {
+                    ghost.image = originalGhostImages.get(ghost);
+                    ghosts.add(ghost);
+                }
+    
+                eatenGhostsDuringFrightened.clear();
+    
+                frightenedModeTimer.stop();
+                if (frightenedCountdownTimer != null) {
+                    frightenedCountdownTimer.stop(); // Sûr que le compteur s'arrête aussi
+                }
+    
+                repaint();
+            }
+        });
+    
+        frightenedModeTimer.setRepeats(false);
+        frightenedModeTimer.start();
+    }
+    
+    
+    
     
 private List<Block> cherries = new ArrayList<>(); // Liste des cerises
 private boolean cherrySpawned = false; // Pour éviter de faire apparaître plusieurs cerises
@@ -389,24 +485,37 @@ private void spawnCherry() {
                 break;
             }
         }
+
+    
     
         // Vérification des collisions avec les fantômes
+        Block ghostEaten = null;
+
         for (Block ghost : ghosts) {
             if (collision(ghost, pacman)) {
-                lives -= 1;
-                if (lives == 0) {
-                    gameOver = true;
-                    return;
+                if (isFrightenedMode) {
+                    ghostEaten = ghost;
+                    score += 200;
+                    System.out.println("SCORE ACTUEL : " + score);
+
+                    eatenGhostsDuringFrightened.add(ghost);
+                } else {
+                    lives -= 1;
+                    if (lives == 0) {
+                        gameOver = true;
+                        return;
+                    }
+                    resetPositions();
                 }
-                resetPositions();
             }
-    
+        
             if (ghost.y == tileSize * 9 && ghost.direction != 'U' && ghost.direction != 'D') {
                 ghost.updateDirection('U');
             }
+        
             ghost.x += ghost.velocityX;
             ghost.y += ghost.velocityY;
-    
+        
             for (Block wall : walls) {
                 if (collision(ghost, wall) || ghost.x <= 0 || ghost.x + ghost.width >= boardWidth) {
                     ghost.x -= ghost.velocityX;
@@ -416,6 +525,14 @@ private void spawnCherry() {
                 }
             }
         }
+        
+        
+
+// Supprime le fantôme mangé du jeu
+if (ghostEaten != null) {
+    ghosts.remove(ghostEaten);
+}
+
     
         // Vérification des collisions avec la nourriture
         Block foodEaten = null;
@@ -423,6 +540,8 @@ private void spawnCherry() {
             if (collision(pacman, food)) {
                 foodEaten = food; // Enregistre la nourriture que Pacman a mangée
                 score += 10; // Augmente le score de 10 points
+                System.out.println("SCORE ACTUEL : " + score);
+
             }
         }
     
@@ -447,6 +566,9 @@ for (Block cherry : cherries) {
     if (collision(pacman, cherry)) {
         cherryEaten = cherry; // Enregistre la cerise que Pacman a mangée
         score += 100; // Augmente le score de 100 points (ou une autre valeur)
+        System.out.println("SCORE ACTUEL : " + score);
+
+        frightenedGhostApparition();
     }
 }
 
