@@ -131,6 +131,9 @@ private long deuxCentDisplayStartTime = 0;
 private int deuxcentX = 0; // Position d'affichage (on peut la centrer sur le ghost mangé)
 private int deuxcentY = 0;
 
+private char requestedDirection = ' '; // rien demandé tant que l'utilisateur n'appuie pas
+private boolean firstMoveStarted = false;
+
 
 
 
@@ -490,37 +493,85 @@ private void spawnCherry() {
 
     // Méthode pour déplacer Pac-Man et les fantômes
     public void move() {
-        // Déplacement de Pac-Man selon sa vélocité actuelle
-        pacman.x += pacman.velocityX;
-        pacman.y += pacman.velocityY;
+        // 1. Appliquer la direction demandée si possible
+        if (requestedDirection != ' ') {
+            int testVX = 0;
+            int testVY = 0;
     
-        // Vérification des collisions avec les murs
-        for (Block wall : walls) {
-            if (collision(pacman, wall)) {
-                pacman.x -= pacman.velocityX;
-                pacman.y -= pacman.velocityY;
-                break;
+            if (requestedDirection == 'U') {
+                testVX = 0;
+                testVY = -tileSize / 4;
+            } else if (requestedDirection == 'D') {
+                testVX = 0;
+                testVY = tileSize / 4;
+            } else if (requestedDirection == 'L') {
+                testVX = -tileSize / 4;
+                testVY = 0;
+            } else if (requestedDirection == 'R') {
+                testVX = tileSize / 4;
+                testVY = 0;
+            }
+    
+            // Simule un déplacement dans la direction demandée
+            Block testMove = new Block(null, pacman.x + testVX, pacman.y + testVY, pacman.width, pacman.height);
+    
+            boolean canChangeDirection = true;
+            for (Block wall : walls) {
+                if (collision(testMove, wall)) {
+                    canChangeDirection = false;
+                    break;
+                }
+            }
+    
+            // Si le changement est possible, on l'applique réellement
+            if (canChangeDirection) {
+                pacman.direction = requestedDirection;
+                pacman.updateVelocity();
+    
+                // Met à jour l’image de Pacman seulement quand la direction a changé
+                if (requestedDirection == 'U') {
+                    pacman.image = pacmanUpImage;
+                } else if (requestedDirection == 'D') {
+                    pacman.image = pacmanDownImage;
+                } else if (requestedDirection == 'L') {
+                    pacman.image = pacmanLeftImage;
+                } else if (requestedDirection == 'R') {
+                    pacman.image = pacmanRightImage;
+                }
+    
+                firstMoveStarted = true;
             }
         }
-
     
+        // 2. Déplacement réel de Pacman uniquement si le jeu a commencé
+        if (firstMoveStarted) {
+            pacman.x += pacman.velocityX;
+            pacman.y += pacman.velocityY;
     
-        // Vérification des collisions avec les fantômes
+            // Vérification collision avec murs
+            for (Block wall : walls) {
+                if (collision(pacman, wall)) {
+                    pacman.x -= pacman.velocityX;
+                    pacman.y -= pacman.velocityY;
+                    break;
+                }
+            }
+        }
+    
+        // 3. Collisions avec fantômes
         Block ghostEaten = null;
-
         for (Block ghost : ghosts) {
             if (collision(ghost, pacman)) {
                 if (isFrightenedMode) {
                     ghostEaten = ghost;
                     score += 200;
                     System.out.println("SCORE ACTUEL : " + score);
-            
-                    // ➕ Afficher l'image deuxcent.png pendant 2 secondes
+    
                     showDeuxCent = true;
                     deuxCentDisplayStartTime = System.currentTimeMillis();
                     deuxcentX = ghost.x;
                     deuxcentY = ghost.y;
-            
+    
                     eatenGhostsDuringFrightened.add(ghost);
                 } else {
                     lives -= 1;
@@ -531,15 +582,14 @@ private void spawnCherry() {
                     resetPositions();
                 }
             }
-            
-        
+    
             if (ghost.y == tileSize * 9 && ghost.direction != 'U' && ghost.direction != 'D') {
                 ghost.updateDirection('U');
             }
-        
+    
             ghost.x += ghost.velocityX;
             ghost.y += ghost.velocityY;
-        
+    
             for (Block wall : walls) {
                 if (collision(ghost, wall) || ghost.x <= 0 || ghost.x + ghost.width >= boardWidth) {
                     ghost.x -= ghost.velocityX;
@@ -549,56 +599,47 @@ private void spawnCherry() {
                 }
             }
         }
-        
-        
-
-// Supprime le fantôme mangé du jeu
-if (ghostEaten != null) {
-    ghosts.remove(ghostEaten);
-}
-
     
-        // Vérification des collisions avec la nourriture
+        if (ghostEaten != null) {
+            ghosts.remove(ghostEaten);
+        }
+    
+        // 4. Collision avec nourriture
         Block foodEaten = null;
         for (Block food : foods) {
             if (collision(pacman, food)) {
-                foodEaten = food; // Enregistre la nourriture que Pacman a mangée
-                score += 10; // Augmente le score de 10 points
+                foodEaten = food;
+                score += 10;
                 System.out.println("SCORE ACTUEL : " + score);
-
             }
         }
-    
-        // Retirer la nourriture mangée de la liste
         foods.remove(foodEaten);
     
-        // Si le score atteint 250 et qu'aucune cerise n'a été générée, fait apparaître une cerise
+        // 5. Génération d'une cerise si score atteint
         if (score >= 250 && !cherrySpawned) {
             spawnCherry();
-            cherrySpawned = true; // Empêche la cerise de réapparaître
-            
+            cherrySpawned = true;
         }
     
-        // Si toute la nourriture a été mangée, on recharge la carte et réinitialise les positions
+        // 6. Niveau terminé = relancer la carte
         if (foods.isEmpty()) {
             loadMap();
             resetPositions();
         }
-        // Vérification des collisions avec les cerises
-Block cherryEaten = null;
-for (Block cherry : cherries) {
-    if (collision(pacman, cherry)) {
-        cherryEaten = cherry; // Enregistre la cerise que Pacman a mangée
-        score += 100; // Augmente le score de 100 points (ou une autre valeur)
-        System.out.println("SCORE ACTUEL : " + score);
-
-        frightenedGhostApparition();
+    
+        // 7. Collision avec cerise
+        Block cherryEaten = null;
+        for (Block cherry : cherries) {
+            if (collision(pacman, cherry)) {
+                cherryEaten = cherry;
+                score += 100;
+                System.out.println("SCORE ACTUEL : " + score);
+                frightenedGhostApparition();
+            }
+        }
+        cherries.remove(cherryEaten);
     }
-}
-
-// Retirer la cerise mangée de la liste
-cherries.remove(cherryEaten);
-    }
+    
 
     // Méthode pour vérifier les collisions entre deux objets (Pacman ou un fantôme)
     public boolean collision(Block a, Block b) {
@@ -644,49 +685,30 @@ cherries.remove(cherryEaten);
          // Cependant, dans ce code, elle n'est pas utilisée, donc elle reste vide.
     }
 
+
     @Override
-    public void keyReleased(KeyEvent e) {
-         // Cette méthode est appelée lorsque l'utilisateur relâche une touche du clavier.
-        if (gameOver) { // Si le jeu est terminé (gameOver est vrai)
-            loadMap();  // Recharge la carte du jeu, probablement pour redémarrer le niveau ou le jeu
-            resetPositions(); // Réinitialise les positions de Pacman et des fantômes
-            lives = 3;  // Réinitialise le nombre de vies à 3 
-            score = 0; // Réinitialise le score à 0
-            gameOver = false; // Met fin à l'état de "game over"
-            gameLoop.start();  // Redémarre la boucle du jeu (démarre l'animation et la logique du jeu)
-        }
-
-        // Gestion des déplacements de Pacman en fonction des touches directionnelles
-        // System.out.println("KeyEvent: " + e.getKeyCode());
-        if (e.getKeyCode() == KeyEvent.VK_UP) {
-            pacman.updateDirection('U'); // Si la touche "flèche haut" est pressée, Pacman se déplace vers le haut
-        }
-        else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-            pacman.updateDirection('D');  // Si la touche "flèche bas" est pressée, Pacman se déplace vers le bas
-        }
-        else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-            pacman.updateDirection('L'); // Si la touche "flèche gauche" est pressée, Pacman se déplace vers la gauche
-        }
-        else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-            pacman.updateDirection('R');
-        }
-
-
-        // Change l'image de Pacman en fonction de sa direction actuelle.
-    // Cela est fait pour donner l'impression que Pacman "regarde" dans la direction qu'il prend.
-        if (pacman.direction == 'U') {
-            pacman.image = pacmanUpImage;
-        }
-        else if (pacman.direction == 'D') {
-            pacman.image = pacmanDownImage;
-        }
-        else if (pacman.direction == 'L') {
-            pacman.image = pacmanLeftImage;
-        }
-        else if (pacman.direction == 'R') {
-            pacman.image = pacmanRightImage;
-        }
+public void keyReleased(KeyEvent e) {
+    if (gameOver) {
+        loadMap();
+        resetPositions();
+        lives = 3;
+        score = 0;
+        gameOver = false;
+        gameLoop.start();
     }
+
+    // Enregistre la direction demandée
+    if (e.getKeyCode() == KeyEvent.VK_UP) {
+        requestedDirection = 'U';
+    } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+        requestedDirection = 'D';
+    } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+        requestedDirection = 'L';
+    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+        requestedDirection = 'R';
+    }
+}
+
 }
 
 
