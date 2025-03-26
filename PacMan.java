@@ -96,6 +96,23 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         }
     }
 
+    // Classe pour gérer les yeux des fantômes qui retournent à la Ghost House
+    class FloatingEyes {
+        int x, y;
+        long spawnTime;
+    
+        FloatingEyes(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.spawnTime = System.currentTimeMillis();
+        }
+    
+        boolean isExpired() {
+            return System.currentTimeMillis() - spawnTime > 2000;
+        }
+    }
+    
+
 // Dimensions du plateau de jeu
 private int rowCount = 19;  // Avant c'était 21, maintenant c'est 20
 private int columnCount = 19;  // La largeur reste 19 colonnes
@@ -122,7 +139,7 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private Image frightenedGhostImage;
     private Image deuxcentImage;
 
-    private Image chronometerImage;
+private Image chronometerImage;
 private int frightenedTimeRemaining = 0;
 private Timer frightenedCountdownTimer;
 
@@ -135,6 +152,7 @@ private char requestedDirection = ' '; // rien demandé tant que l'utilisateur n
 private boolean firstMoveStarted = false;
 
 
+private Image eyesImage;
 
 
 
@@ -175,6 +193,7 @@ private boolean firstMoveStarted = false;
 private Timer frightenedModeTimer;
 private HashMap<Block, Image> originalGhostImages = new HashMap<>();
 private List<Block> eatenGhostsDuringFrightened = new ArrayList<>();
+List<FloatingEyes> floatingEyesList = new ArrayList<>();
 
 
 
@@ -248,6 +267,7 @@ private List<Block> eatenGhostsDuringFrightened = new ArrayList<>();
         chronometerImage = new ImageIcon(getClass().getResource("./chronometer.png")).getImage();
         deuxcentImage = new ImageIcon(getClass().getResource("./deuxcent.png")).getImage();
 
+        eyesImage = new ImageIcon(getClass().getResource("./eyes.png")).getImage();
 
         // Charge la carte initiale du jeu à partir des données du tableau
         loadMap();
@@ -369,6 +389,10 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
         for (Block ghost : ghosts) {
             g.drawImage(ghost.image, ghost.x, ghost.y, ghost.width, ghost.height, null);
         }
+
+        // 👁️ Dessiner les yeux fantômes en mouvement
+
+
     
         // Dessine les murs 
         for (Block wall : walls) {
@@ -410,6 +434,38 @@ if (showDeuxCent) {
         showDeuxCent = false;
     }
 }
+
+// 👀 Affiche les yeux fixes pendant 2s
+List<FloatingEyes> expiredEyes = new ArrayList<>();
+for (FloatingEyes fe : floatingEyesList) {
+    if (fe.isExpired()) {
+        expiredEyes.add(fe);
+    } else {
+        int row = fe.y / tileSize;
+        int col = fe.x / tileSize;
+
+        // ✅ Condition 1 : la position est dans la map valide
+        if (row < rowCount - 2 && col >= 0 && col < columnCount) {
+            char tileChar = tileMap[row].charAt(col);
+
+            // ✅ Condition 2 : la case est un couloir (pastille ou vide, pas mur)
+            boolean isWalkable = tileChar == ' ' || tileChar == 'P' || tileChar == 'b' || tileChar == 'o' || tileChar == 'p' || tileChar == 'r';
+
+            // ✅ Condition 3 : distance avec Pacman < 5 tiles (manhattan)
+            int pacRow = pacman.y / tileSize;
+            int pacCol = pacman.x / tileSize;
+            int dist = Math.abs(row - pacRow) + Math.abs(col - pacCol);
+
+            if (isWalkable && dist <= 5) {
+                int offsetX = (tileSize - eyesImage.getWidth(null)) / 2;
+                int offsetY = (tileSize - eyesImage.getHeight(null)) / 2;
+                g.drawImage(eyesImage, fe.x + offsetX, fe.y + offsetY, null);
+            }
+        }
+    }
+}
+floatingEyesList.removeAll(expiredEyes);
+
 
     }
 
@@ -565,14 +621,20 @@ private void spawnCherry() {
                 if (isFrightenedMode) {
                     ghostEaten = ghost;
                     score += 200;
-                    System.out.println("SCORE ACTUEL : " + score);
-    
+                   
+            
                     showDeuxCent = true;
                     deuxCentDisplayStartTime = System.currentTimeMillis();
                     deuxcentX = ghost.x;
                     deuxcentY = ghost.y;
-    
+            
                     eatenGhostsDuringFrightened.add(ghost);
+            
+                    // 👁️ Ajout des yeux fantôme qui vont vers une position b/p/o
+                    floatingEyesList.add(new FloatingEyes(ghost.x + tileSize / 2, ghost.y)); // décalé de 16px à droite
+
+
+            
                 } else {
                     lives -= 1;
                     if (lives == 0) {
@@ -582,6 +644,7 @@ private void spawnCherry() {
                     resetPositions();
                 }
             }
+            
     
             if (ghost.y == tileSize * 9 && ghost.direction != 'U' && ghost.direction != 'D') {
                 ghost.updateDirection('U');
@@ -610,7 +673,7 @@ private void spawnCherry() {
             if (collision(pacman, food)) {
                 foodEaten = food;
                 score += 10;
-                System.out.println("SCORE ACTUEL : " + score);
+                
             }
         }
         foods.remove(foodEaten);
@@ -633,7 +696,7 @@ private void spawnCherry() {
             if (collision(pacman, cherry)) {
                 cherryEaten = cherry;
                 score += 100;
-                System.out.println("SCORE ACTUEL : " + score);
+               
                 frightenedGhostApparition();
             }
         }
@@ -665,6 +728,9 @@ private void spawnCherry() {
     @Override
     public void actionPerformed(ActionEvent e) {
         move(); // Effectue le déplacement de Pacman et des fantômes
+        // 👁️ Déplacement des yeux fantômes
+
+
         repaint(); // Rafraîchit l'affichage du jeu
         if (gameOver) { // Si la partie est terminée, arrête la boucle du jeu
             gameLoop.stop();
@@ -710,5 +776,3 @@ public void keyReleased(KeyEvent e) {
 }
 
 }
-
-
