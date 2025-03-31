@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet; // Collection qui stocke des objets uniques, utile pour gérer des ensembles de murs, de nourriture, etc.
 import java.util.Random; // Générateur de nombres aléatoires, utilisé ici pour les déplacements aléatoires des fantômes
+import java.util.Set;
+
 import javax.swing.*; // Bibliothèque Swing, utilisée pour créer des interfaces graphiques (panneaux, timers, images)
 import java.util.List; // Importe l'interface List
 import java.util.ArrayList; // Importe la classe ArrayList
@@ -138,6 +140,8 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private Image blackWallImage;
     private Image frightenedGhostImage;
     private Image deuxcentImage;
+ 
+
 
 private Image chronometerImage;
 private int frightenedTimeRemaining = 0;
@@ -195,6 +199,16 @@ private HashMap<Block, Image> originalGhostImages = new HashMap<>();
 private List<Block> eatenGhostsDuringFrightened = new ArrayList<>();
 List<FloatingEyes> floatingEyesList = new ArrayList<>();
 
+Set<Point> powerPelletPoints = Set.of(
+    new Point(1, 3),
+    new Point(17, 2),
+    new Point(2, 16),
+    new Point(16, 16)
+);
+
+
+
+
 
 
     Timer gameLoop; // Timer pour gérer les mises à jour du jeu à intervalle régulier
@@ -243,7 +257,7 @@ List<FloatingEyes> floatingEyesList = new ArrayList<>();
         exitButton = new JButton("Exit");
         exitButton.setBounds(boardWidth - 200, boardHeight - 40, 80, 30); //
         this.add(exitButton);
-        this.setVisible(true);
+      this.setVisible(true);
 
        // bottomPanel.add(exitButton);
 
@@ -268,6 +282,8 @@ List<FloatingEyes> floatingEyesList = new ArrayList<>();
         deuxcentImage = new ImageIcon(getClass().getResource("./deuxcent.png")).getImage();
 
         eyesImage = new ImageIcon(getClass().getResource("./eyes.png")).getImage();
+       
+        
 
         // Charge la carte initiale du jeu à partir des données du tableau
         loadMap();
@@ -285,66 +301,77 @@ List<FloatingEyes> floatingEyesList = new ArrayList<>();
     }
 
     // Méthode pour charger la carte du jeu
+   
+
     public void loadMap() {
-        // Initialise les ensembles de murs, de nourriture et de fantômes
+        // 🔄 Réinitialisation des listes
         walls = new HashSet<>();
         foods = new HashSet<>();
         ghosts = new HashSet<>();
+      
     
-        // Parcourt chaque ligne et colonne de la carte
+        // 🧱 Chargement de la carte
         for (int r = 0; r < rowCount; r++) {
             for (int c = 0; c < columnCount; c++) {
-                String row = tileMap[r]; // Récupère la ligne actuelle de la carte
-                char tileMapChar = row.charAt(c); // Caractère représentant un type d'objet (mur, nourriture, fantôme, etc.)
-    
-                // Calcule les coordonnées de l'objet en fonction de sa position sur la carte
+                char tileMapChar = tileMap[r].charAt(c);
                 int x = c * tileSize;
                 int y = r * tileSize;
     
-                // Vérifie quel type d'objet représente le caractère
-                if (tileMapChar == 'X') { // Mur bleu
-                    Block wall = new Block(wallImage, x, y, tileSize, tileSize);
-                    walls.add(wall);
-                } 
-                else if (tileMapChar == 'b') { // Fantôme bleu
-                    Block ghost = new Block(blueGhostImage, x, y, tileSize, tileSize);
-                    ghosts.add(ghost);
-                } 
-                else if (tileMapChar == 'o') { // Fantôme orange
-                    Block ghost = new Block(orangeGhostImage, x, y, tileSize, tileSize);
-                    ghosts.add(ghost);
-                } 
-                else if (tileMapChar == 'p') { // Fantôme rose
-                    Block ghost = new Block(pinkGhostImage, x, y, tileSize, tileSize);
-                    ghosts.add(ghost);
-                } 
-                else if (tileMapChar == 'r') { // Fantôme rouge
-                    Block ghost = new Block(redGhostImage, x, y, tileSize, tileSize);
-                    ghosts.add(ghost);
-                } 
-                else if (tileMapChar == 'P') {
-                    // Vérifie si c'est LadyPacman ou Pacman
-                    if (selectedCharacter.equals("ladypacman")) {
-                        pacman = new Block(new ImageIcon(getClass().getResource("./ladyPacmanRight.png")).getImage(), x, y, tileSize, tileSize);
-                    } else {
-                        pacman = new Block(new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage(), x, y, tileSize, tileSize);
-                    }
-                }
-                
-                else if (tileMapChar == ' ' && r < rowCount - 2) { // Nourriture blanche (PAS sur les 2 dernières lignes)
-                    Block food = new Block(null, x + 14, y + 14, 4, 4);
-                    foods.add(food);
+                switch (tileMapChar) {
+                    case 'X':
+                        walls.add(new Block(wallImage, x, y, tileSize, tileSize));
+                        break;
+                    case 'b':
+                        ghosts.add(new Block(blueGhostImage, x, y, tileSize, tileSize));
+                        break;
+                    case 'o':
+                        ghosts.add(new Block(orangeGhostImage, x, y, tileSize, tileSize));
+                        break;
+                    case 'p':
+                        ghosts.add(new Block(pinkGhostImage, x, y, tileSize, tileSize));
+                        break;
+                    case 'r':
+                        ghosts.add(new Block(redGhostImage, x, y, tileSize, tileSize));
+                        break;
+                    case 'P':
+                        if (selectedCharacter.equals("ladypacman")) {
+                            pacman = new Block(new ImageIcon(getClass().getResource("./ladyPacmanRight.png")).getImage(), x, y, tileSize, tileSize);
+                        } else {
+                            pacman = new Block(new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage(), x, y, tileSize, tileSize);
+                        }
+                        break;
+                    case ' ':
+                        if (r < rowCount - 2) {
+                            if (r < rowCount - 2) {
+                                boolean isPower = powerPelletPoints.contains(new Point(c, r));
+                            
+                                int size = isPower ? 8 : 4;
+                                int offset = (tileSize - size) / 2;
+                            
+                                foods.add(new Block(null, c * tileSize + offset, r * tileSize + offset, size, size));
+                            }
+                            
+                        }
+                        break;
                 }
             }
         }
     
-        // 🔥 Ajout de murs noirs invisibles sur les 2 dernières lignes
-        for (int r = rowCount - 2; r < rowCount; r++) { // Parcourt les 2 dernières lignes
+        
+        
+        
+        
+        
+        
+        
+       
+    
+        // 🕳️ Ajout de murs invisibles sur les 2 dernières lignes
+        for (int r = rowCount - 2; r < rowCount; r++) {
             for (int c = 0; c < columnCount; c++) {
                 int x = c * tileSize;
                 int y = r * tileSize;
-                Block blackWall = new Block(null, x, y, tileSize, tileSize); // Mur invisible
-                walls.add(blackWall);
+                walls.add(new Block(null, x, y, tileSize, tileSize));
             }
         }
     }
@@ -404,6 +431,10 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
         for (Block food : foods) {
             g.fillRect(food.x, food.y, food.width, food.height);
         }
+
+        
+
+        
     
         // Dessine les cerises
         for (Block cherry : cherries) {
@@ -472,58 +503,61 @@ floatingEyesList.removeAll(expiredEyes);
 
     private void frightenedGhostApparition() {
         isFrightenedMode = true;
-        frightenedTimeRemaining = 15; // Démarre à 15 secondes
+        frightenedTimeRemaining = 6; // ⏱️ Affiche 6s
     
-        // Sauvegarde les images d'origine des fantômes
+        if (frightenedCountdownTimer != null) frightenedCountdownTimer.stop();
+        if (frightenedModeTimer != null) frightenedModeTimer.stop();
+    
         for (Block ghost : ghosts) {
-            originalGhostImages.put(ghost, ghost.image);
+            if (!originalGhostImages.containsKey(ghost)) {
+                originalGhostImages.put(ghost, ghost.image);
+            }
             ghost.image = frightenedGhostImage;
         }
     
-        // Timer visuel : décrémenter le chrono toutes les secondes
-        frightenedCountdownTimer = new Timer(1000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                frightenedTimeRemaining--;
-                if (frightenedTimeRemaining <= 0) {
-                    frightenedCountdownTimer.stop();
-                }
-                repaint(); // Pour forcer l'affichage à jour
+        frightenedCountdownTimer = new Timer(1000, e -> {
+            frightenedTimeRemaining--;
+            if (frightenedTimeRemaining <= 0) {
+                frightenedCountdownTimer.stop();
             }
+            repaint();
         });
         frightenedCountdownTimer.start();
     
-        // Timer principal de fin du frightened mode
-        frightenedModeTimer = new Timer(15000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                isFrightenedMode = false;
+        frightenedModeTimer = new Timer(6000, e -> { // ⏳ Réel timer 6s
+            isFrightenedMode = false;
     
-                for (Block ghost : ghosts) {
-                    if (originalGhostImages.containsKey(ghost)) {
-                        ghost.image = originalGhostImages.get(ghost);
-                    }
-                }
-    
-                for (Block ghost : eatenGhostsDuringFrightened) {
+            for (Block ghost : ghosts) {
+                if (originalGhostImages.containsKey(ghost)) {
                     ghost.image = originalGhostImages.get(ghost);
-                    ghosts.add(ghost);
                 }
-    
-                eatenGhostsDuringFrightened.clear();
-    
-                frightenedModeTimer.stop();
-                if (frightenedCountdownTimer != null) {
-                    frightenedCountdownTimer.stop(); // Sûr que le compteur s'arrête aussi
-                }
-    
-                repaint();
             }
+    
+            for (Block eaten : eatenGhostsDuringFrightened) {
+                if (!ghosts.contains(eaten)) {
+                    ghosts.add(eaten);
+                }
+                if (originalGhostImages.containsKey(eaten)) {
+                    eaten.image = originalGhostImages.get(eaten);
+                }
+            }
+    
+            eatenGhostsDuringFrightened.clear();
+            originalGhostImages.clear();
+    
+            frightenedCountdownTimer.stop();
+            frightenedModeTimer.stop();
+    
+            repaint();
         });
     
         frightenedModeTimer.setRepeats(false);
         frightenedModeTimer.start();
     }
+    
+    
+    
+    
     
     
     
@@ -672,14 +706,20 @@ private void spawnCherry() {
         for (Block food : foods) {
             if (collision(pacman, food)) {
                 foodEaten = food;
-                score += 10;
-                
+
+    // Pastille classique
+    score += 10;
+
+    // Power Pellet = taille 8
+    if (food.width == 8 && food.height == 8) {
+        frightenedGhostApparition();
+    }
             }
         }
         foods.remove(foodEaten);
     
         // 5. Génération d'une cerise si score atteint
-        if (score >= 250 && !cherrySpawned) {
+        if (score >= 2500 && !cherrySpawned) {
             spawnCherry();
             cherrySpawned = true;
         }
@@ -689,7 +729,8 @@ private void spawnCherry() {
             loadMap();
             resetPositions();
         }
-    
+        
+        
         // 7. Collision avec cerise
         Block cherryEaten = null;
         for (Block cherry : cherries) {
