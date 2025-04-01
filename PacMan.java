@@ -1,18 +1,27 @@
 
 import java.awt.*; // Fournit des classes pour la gestion des éléments graphiques (images, couleurs, tailles, etc.)
 import java.awt.event.*;// Permet la gestion des événements comme les clics, les frappes clavier, et les temporisations
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet; // Collection qui stocke des objets uniques, utile pour gérer des ensembles de murs, de nourriture, etc.
 import java.util.Random; // Générateur de nombres aléatoires, utilisé ici pour les déplacements aléatoires des fantômes
 import java.util.Set;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.*; // Bibliothèque Swing, utilisée pour créer des interfaces graphiques (panneaux, timers, images)
 import java.util.List; // Importe l'interface List
 import java.util.ArrayList; // Importe la classe ArrayList
 
 // La classe principale du programme, représentant l'ensemble du jeu Pac-Man
 public class PacMan extends JPanel implements ActionListener, KeyListener {
+
+    public boolean canPlay = false; // 👈 rends-le bien PUBLIC
+    public boolean showReady = true;
+    private long lastEatingTime = 0;
+
     //*Remarque : `JPanel` est un conteneur graphique, et `ActionListener` / `KeyListener` sont des interfaces
     // qui permettent de répondre aux événements comme les entrées clavier ou les temporisations.
     //private String playerName;
@@ -157,6 +166,10 @@ private boolean firstMoveStarted = false;
 
 
 private Image eyesImage;
+private Clip eatingClip; // Son de mastication
+
+
+
 
 
 
@@ -294,7 +307,7 @@ Set<Point> powerPelletPoints = Set.of(
             ghost.updateDirection(newDirection);
         }
          // Configure la boucle principale du jeu avec un intervalle de 50ms entre chaque frame (20 FPS)
-        gameLoop = new Timer(50, this); //20fps (1000/50)
+        gameLoop = new Timer(44, this); //20fps (1000/50)
         // Démarre la boucle de jeu
         gameLoop.start();
 
@@ -497,6 +510,16 @@ for (FloatingEyes fe : floatingEyesList) {
 }
 floatingEyesList.removeAll(expiredEyes);
 
+// 🔥 READY ! affiché pendant 5s au démarrage
+if (showReady) {
+    g.setFont(new Font("Arial", Font.BOLD, 40));
+    g.setColor(Color.YELLOW);
+    String message = "READY!";
+    int textWidth = g.getFontMetrics().stringWidth(message);
+    g.drawString(message, (boardWidth - textWidth) / 2, boardHeight / 2 + 20);
+}
+
+
 
     }
 
@@ -583,6 +606,9 @@ private void spawnCherry() {
 
     // Méthode pour déplacer Pac-Man et les fantômes
     public void move() {
+
+        if (!canPlay) return; // ⛔ empêche tout mouvement si les 5s ne sont pas passées
+
         // 1. Appliquer la direction demandée si possible
         if (requestedDirection != ' ') {
             int testVX = 0;
@@ -703,20 +729,30 @@ private void spawnCherry() {
     
         // 4. Collision avec nourriture
         Block foodEaten = null;
+       
         for (Block food : foods) {
             if (collision(pacman, food)) {
                 foodEaten = food;
-
-    // Pastille classique
-    score += 10;
-
-    // Power Pellet = taille 8
-    if (food.width == 8 && food.height == 8) {
-        frightenedGhostApparition();
-    }
+        
+                if (food.width == 8 && food.height == 8) {
+                    frightenedGhostApparition();
+                    playSound("PacmanPowerPellet.wav");
+                } else {
+                    score += 10;
+        
+                    // 🛑 Ne joue PAS le son si on est en mode frightened
+                    if (canPlay && !isFrightenedMode) {
+                        playEatingSound();
+                        lastEatingTime = System.currentTimeMillis();
+                        //playSound("Alarm.wav");
+                    }
+                }
             }
         }
         foods.remove(foodEaten);
+        
+      
+        
     
         // 5. Génération d'une cerise si score atteint
         if (score >= 2500 && !cherrySpawned) {
@@ -742,6 +778,18 @@ private void spawnCherry() {
             }
         }
         cherries.remove(cherryEaten);
+
+        // 🎧 Si Pacman ne mange plus depuis 500 ms, on coupe le son
+if (eatingClip != null && eatingClip.isRunning()) {
+    long now = System.currentTimeMillis();
+    if (now - lastEatingTime > 600) {
+        System.out.println("🛑 Pacman ne mange plus → arrêt du son");
+        eatingClip.stop();
+        eatingClip.close();
+        eatingClip = null;
+    }
+}
+
     }
     
 
@@ -795,6 +843,7 @@ private void spawnCherry() {
 
     @Override
 public void keyReleased(KeyEvent e) {
+    if (!canPlay) return;
     if (gameOver) {
         loadMap();
         resetPositions();
@@ -816,4 +865,40 @@ public void keyReleased(KeyEvent e) {
     }
 }
 
+public void playSound(String fileName) {
+    new Thread(() -> {
+        try {
+            File soundFile = new File(fileName);
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioIn);
+            clip.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }).start();
 }
+
+public void playEatingSound() {
+    try {
+        // Ne rien faire si le son est déjà en train de jouer
+        if (eatingClip != null && eatingClip.isRunning()) return;
+
+        // Sinon, charger et jouer le son
+        File soundFile = new File("PacmanEating.wav");
+        AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+        eatingClip = AudioSystem.getClip();
+        eatingClip.open(audioIn);
+        eatingClip.start();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+
+
+
+
+}
+
+
