@@ -169,6 +169,9 @@ private Image eyesImage;
 private Clip eatingClip; // Son de mastication
 private Clip powerPelletClip;
 
+private Image whiteGhostImage;
+
+
 
 
 
@@ -296,7 +299,8 @@ Set<Point> powerPelletPoints = Set.of(
         deuxcentImage = new ImageIcon(getClass().getResource("./deuxcent.png")).getImage();
 
         eyesImage = new ImageIcon(getClass().getResource("./eyes.png")).getImage();
-       
+        whiteGhostImage = new ImageIcon(getClass().getResource("./whiteGhost.png")).getImage();
+
         
 
         // Charge la carte initiale du jeu à partir des données du tableau
@@ -426,6 +430,8 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
         // Dessine Pac-Man à ses coordonnées actuelles
         g.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height, null);
     
+        updateFrightenedGhostBlinking(); // 👈 pour faire clignoter les fantômes
+
         // Dessine les fantômes
         for (Block ghost : ghosts) {
             g.drawImage(ghost.image, ghost.x, ghost.y, ghost.width, ghost.height, null);
@@ -866,6 +872,25 @@ public void keyReleased(KeyEvent e) {
         requestedDirection = 'R';
     }
 }
+
+private void updateFrightenedGhostBlinking() {
+    if (!isFrightenedMode) return;
+
+    long elapsed = System.currentTimeMillis() - frightenedModeTimer.getInitialDelay() + frightenedTimeRemaining * 1000L;
+
+    // Si on est dans les 2 dernières secondes
+    if (frightenedTimeRemaining <= 4) {
+        long currentTime = System.currentTimeMillis();
+        boolean blinkWhite = ((currentTime / 500) % 2 == 0); // Alterne toutes les 0.5 secondes
+
+        for (Block ghost : ghosts) {
+            if (!eatenGhostsDuringFrightened.contains(ghost)) {
+                ghost.image = blinkWhite ? whiteGhostImage : frightenedGhostImage;
+            }
+        }
+    }
+}
+
 
 public void playSound(String fileName) {
     new Thread(() -> {
