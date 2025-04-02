@@ -167,6 +167,7 @@ private boolean firstMoveStarted = false;
 
 private Image eyesImage;
 private Clip eatingClip; // Son de mastication
+private Clip powerPelletClip;
 
 
 
@@ -736,7 +737,7 @@ private void spawnCherry() {
         
                 if (food.width == 8 && food.height == 8) {
                     frightenedGhostApparition();
-                    playSound("PacmanPowerPellet.wav");
+                    playPowerPelletSound();
                 } else {
                     score += 10;
         
@@ -782,6 +783,7 @@ private void spawnCherry() {
         // 🎧 Si Pacman ne mange plus depuis 500 ms, on coupe le son
 if (eatingClip != null && eatingClip.isRunning()) {
     long now = System.currentTimeMillis();
+    System.out.println("⏱️ TICK " + now);
     if (now - lastEatingTime > 600) {
         System.out.println("🛑 Pacman ne mange plus → arrêt du son");
         eatingClip.stop();
@@ -873,10 +875,32 @@ public void playSound(String fileName) {
             Clip clip = AudioSystem.getClip();
             clip.open(audioIn);
             clip.start();
+           
+System.out.println("🔊 Son joué : " + fileName + " à " + System.currentTimeMillis());
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }).start();
+}
+
+public void playPowerPelletSound() {
+    try {
+        if (powerPelletClip != null) {
+            powerPelletClip.stop();   // ⛔ Arrête le précédent
+            powerPelletClip.close();  // 🚫 Libère la ressource
+        }
+
+        File soundFile = new File("PacmanPowerPellet.wav");
+        AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+        powerPelletClip = AudioSystem.getClip();
+        powerPelletClip.open(audioIn);
+        powerPelletClip.start();     // ▶️ Joue depuis le début
+        System.out.println("💥 PowerPelletSound RESET + JOUÉ !");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
 }
 
 public void playEatingSound() {
