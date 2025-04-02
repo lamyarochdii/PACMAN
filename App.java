@@ -9,8 +9,10 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 
+
 public class App {
     public static void main(String[] args) {
+        
         // Créer une fenêtre pour demander le nom du joueur
         JFrame nameFrame = new JFrame("Inscription");
         nameFrame.setSize(350, 250); // Taille de la fenêtre
@@ -128,8 +130,10 @@ public class App {
     
         JFrame gameFrame = new JFrame("Pac Man");
         gameFrame.setSize(boardWidth, boardHeight);
-        gameFrame.setLocationRelativeTo(null);
-        gameFrame.setResizable(false);
+gameFrame.setLocationRelativeTo(null);
+gameFrame.setResizable(false);
+
+        
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     
         PacMan pacmanGame = new PacMan(characterChoice); // 👈 Passe le personnage ici
@@ -137,27 +141,37 @@ public class App {
     
         String filePath = "Pac-Man-Theme-Original.wav";
         new Thread(() -> playMusic(filePath)).start();
-    
+
+        
+    // ⏳ Bloque les mouvements pendant 5s avec Timer correctement démarré
+    pacmanGame.canPlay = false;
+    pacmanGame.showReady = true;
+    Timer delayTimer = new Timer(5000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            pacmanGame.canPlay = true;
+            pacmanGame.showReady = false;
+        }
+    });
+    delayTimer.setRepeats(false);
+    delayTimer.start();
         gameFrame.setVisible(true);
     }
     
-    public static void playMusic(String filePath) {
-        try {
-            // Charger le fichier audio
-            AudioInputStream audioStream = AudioSystem.getAudioInputStream(new File(filePath));
+   public static void playMusic(String filePath) {
+    try {
+        File soundFile = new File(filePath);
+        AudioInputStream audioStream = AudioSystem.getAudioInputStream(soundFile);
+        Clip clip = AudioSystem.getClip();
+        clip.open(audioStream);
+        clip.start(); // Joue la musique
 
-            // Obtenir le clip audio
-            Clip clip = AudioSystem.getClip();
-            clip.open(audioStream);
-
-            // Jouer la musique
-            clip.start();
-            // Attendre la fin de la lecture (simplement attendre la durée du clip)
-            Thread.sleep(clip.getMicrosecondLength() / 1000);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Ne bloque pas avec sleep
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
+
 }
 
 
