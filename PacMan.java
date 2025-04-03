@@ -762,7 +762,7 @@ private void spawnCherry() {
         
     
         // 5. Génération d'une cerise si score atteint
-        if (score >= 2500 && !cherrySpawned) {
+        if (score >= 170 && !cherrySpawned) {
             spawnCherry();
             cherrySpawned = true;
         }
@@ -781,7 +781,7 @@ private void spawnCherry() {
                 cherryEaten = cherry;
                 score += 100;
                
-                frightenedGhostApparition();
+               // frightenedGhostApparition();
             }
         }
         cherries.remove(cherryEaten);
@@ -949,5 +949,4 @@ public void playEatingSound() {
 
 
 }
-
 
