@@ -123,6 +123,20 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         }
     }
     
+    class TimedCherry {
+        Block block;
+        long spawnTime;
+    
+        TimedCherry(Block block) {
+            this.block = block;
+            this.spawnTime = System.currentTimeMillis();
+        }
+    
+        boolean isExpired() {
+            return System.currentTimeMillis() - spawnTime > 10000; // 10 secondes
+        }
+    }
+    
 
 // Dimensions du plateau de jeu
 private int rowCount = 19;  // Avant c'était 21, maintenant c'est 20
@@ -457,9 +471,11 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
         
     
         // Dessine les cerises
-        for (Block cherry : cherries) {
-            g.drawImage(cherry.image, cherry.x, cherry.y, cherry.width, cherry.height, null);
-        }
+        // 🍒 Dessine les cerises temporisées (TimedCherry)
+for (TimedCherry tc : cherries) {
+    g.drawImage(tc.block.image, tc.block.x, tc.block.y, tc.block.width, tc.block.height, null);
+}
+
     
         // 🏆 Affiche le score en bas à droite
         g.setFont(new Font("Arial", Font.PLAIN, 18));
@@ -591,23 +607,21 @@ if (showReady) {
     
     
     
-    
-private List<Block> cherries = new ArrayList<>(); // Liste des cerises
+    private List<TimedCherry> cherries = new ArrayList<>();
+
 private boolean cherrySpawned = false; // Pour éviter de faire apparaître plusieurs cerises
 
 private void spawnCherry() {
     if (!foods.isEmpty()) {
-        List<Block> foodList = new ArrayList<>(foods); // Convertir le HashSet en ArrayList
-        Random rand = new Random();
-        int randomIndex = rand.nextInt(foodList.size()); // Index aléatoire
-        Block randomFood = foodList.get(randomIndex); // Pastille aléatoire
+        List<Block> foodList = new ArrayList<>(foods);
+        Block randomFood = foodList.get(random.nextInt(foodList.size()));
 
-        // Crée une cerise à la position de la pastille
-        Block cherry = new Block(cherryImage, randomFood.x, randomFood.y, 20, 20);
-        cherries.add(cherry); // Ajoute la cerise à la liste
-        foods.remove(randomFood); // Retire la pastille de la liste des pastilles
+        Block cherryBlock = new Block(cherryImage, randomFood.x, randomFood.y, 20, 20);
+        cherries.add(new TimedCherry(cherryBlock));
+        foods.remove(randomFood);
     }
 }
+
 
 
 
@@ -775,16 +789,22 @@ private void spawnCherry() {
         
         
         // 7. Collision avec cerise
-        Block cherryEaten = null;
-        for (Block cherry : cherries) {
-            if (collision(pacman, cherry)) {
-                cherryEaten = cherry;
+        List<TimedCherry> expiredCherries = new ArrayList<>();
+        TimedCherry eatenCherry = null;
+        
+        for (TimedCherry tc : cherries) {
+            if (tc.isExpired()) {
+                expiredCherries.add(tc); // ⏳ cherry disparue
+            } else if (collision(pacman, tc.block)) {
+                eatenCherry = tc;
                 score += 100;
-               
-               // frightenedGhostApparition();
+                // Optionnel : playSound("Cherry.wav");
             }
         }
-        cherries.remove(cherryEaten);
+        
+        cherries.removeAll(expiredCherries);
+        if (eatenCherry != null) cherries.remove(eatenCherry);
+        
 
         // 🎧 Si Pacman ne mange plus depuis 500 ms, on coupe le son
 if (eatingClip != null && eatingClip.isRunning()) {
@@ -900,6 +920,7 @@ public void playSound(String fileName) {
             Clip clip = AudioSystem.getClip();
             clip.open(audioIn);
             clip.start();
+            
            
 System.out.println("🔊 Son joué : " + fileName + " à " + System.currentTimeMillis());
 
