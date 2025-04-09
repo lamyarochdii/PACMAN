@@ -22,6 +22,7 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     public boolean showReady = true;
     private long lastEatingTime = 0;
 
+
     //*Remarque : `JPanel` est un conteneur graphique, et `ActionListener` / `KeyListener` sont des interfaces
     // qui permettent de répondre aux événements comme les entrées clavier ou les temporisations.
     //private String playerName;
@@ -46,6 +47,8 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
          // Vitesse actuelle du bloc dans les directions X et Y
         int velocityX = 0;
         int velocityY = 0;
+
+        boolean isGhost = false; // 👈 Ajout ici !
 
         // Constructeur pour initialiser un bloc avec ses propriétés (image, position, dimensions)
         Block(Image image, int x, int y, int width, int height) {
@@ -81,27 +84,34 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
 
         // Méthode : Met à jour la vitesse (`velocityX` et `velocityY`) en fonction de la direction
         void updateVelocity() {
-            if (this.direction == 'U') {  // Si la direction est "up" (haut)
-                this.velocityX = 0; // Pas de déplacement horizontal
-                this.velocityY = -tileSize/4; // Déplacement vers le haut (négatif sur l'axe Y)
+            int speed = tileSize / 4;
+        
+            // 👻 Si c’est un fantôme et qu’il est en mode frightened → on le ralentit
+            if (isGhost && isFrightenedMode) {
+                speed = tileSize / 8; // Deux fois plus lent
             }
-            else if (this.direction == 'D') {
+        
+            if (this.direction == 'U') {
                 this.velocityX = 0;
-                this.velocityY = tileSize/4;
-            }
-            else if (this.direction == 'L') {
-                this.velocityX = -tileSize/4;
+                this.velocityY = -speed;
+            } else if (this.direction == 'D') {
+                this.velocityX = 0;
+                this.velocityY = speed;
+            } else if (this.direction == 'L') {
+                this.velocityX = -speed;
+                this.velocityY = 0;
+            } else if (this.direction == 'R') {
+                this.velocityX = speed;
                 this.velocityY = 0;
             }
-            else if (this.direction == 'R') {
-                this.velocityX = tileSize/4;
-                this.velocityY = 0;
-            }
-            //tileSize/4 signifie que la vitesse est un quart de la taille d'un "tile" (case).
+        
+            // tileSize/4 signifie une vitesse normale, tileSize/8 = ralenti
         }
+        
 
         // Méthode : Réinitialise la position du bloc à ses coordonnées de départ
         void reset() {
+            System.out.println("🔁 RESET to " + startX + ", " + startY); // 🪪 Debug
             this.x = this.startX;
             this.y = this.startY;
         }
@@ -110,18 +120,149 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
     // Classe pour gérer les yeux des fantômes qui retournent à la Ghost House
     class FloatingEyes {
         int x, y;
-        long spawnTime;
+        int goalX, goalY;
+        int velocityX = 0, velocityY = 0;
+        char direction = 'U';
+        char lastDirection = ' '; // 🧠 Pour se souvenir de la dernière direction
+
+        boolean reachedGoal = false;
+        long arrivalTime = 0;
     
-        FloatingEyes(int x, int y) {
-            this.x = x;
-            this.y = y;
-            this.spawnTime = System.currentTimeMillis();
+        FloatingEyes(int startX, int startY) {
+            this.x = startX;
+            this.y = startY;
+            this.goalX = 11 * tileSize;
+            this.goalY = 9 * tileSize;
+            updateDirectionTowardGoal();
         }
     
-        boolean isExpired() {
-            return System.currentTimeMillis() - spawnTime > 2000;
+        void move() {
+            if (reachedGoal) return;
+    
+            x += velocityX;
+            y += velocityY;
+    
+            if (x % tileSize == 0 && y % tileSize == 0) {
+                if (x == goalX && y == goalY) {
+                    reachedGoal = true;
+                    arrivalTime = System.currentTimeMillis();
+                    velocityX = 0;
+                    velocityY = 0;
+                } else {
+                    updateDirectionTowardGoal();
+                }
+            }
         }
+    
+        boolean shouldDisappear() {
+            return reachedGoal && System.currentTimeMillis() - arrivalTime > 1000;
+        }
+    
+        private void updateDirectionTowardGoal() {
+            int speed = tileSize / 4;
+            int currentRow = y / tileSize;
+            int currentCol = x / tileSize;
+            int targetRow = goalY / tileSize;
+            int targetCol = goalX / tileSize;
+        
+            List<Character> directions = new ArrayList<>();
+        
+            // 👁️ Étape 1 : directions qui rapprochent de la cible
+            if (Math.abs(currentCol - targetCol) >= Math.abs(currentRow - targetRow)) {
+                if (currentCol < targetCol) directions.add('R');
+                if (currentCol > targetCol) directions.add('L');
+                if (currentRow < targetRow) directions.add('D');
+                if (currentRow > targetRow) directions.add('U');
+            } else {
+                if (currentRow < targetRow) directions.add('D');
+                if (currentRow > targetRow) directions.add('U');
+                if (currentCol < targetCol) directions.add('R');
+                if (currentCol > targetCol) directions.add('L');
+            }
+        
+            // Étape 2 : compléter avec les autres directions restantes
+            for (char dir : List.of('U', 'D', 'L', 'R')) {
+                if (!directions.contains(dir)) {
+                    directions.add(dir);
+                }
+            }
+        
+            // Étape 3 : exclure la direction opposée à la précédente
+            char opposite = switch (lastDirection) {
+                case 'U' -> 'D';
+                case 'D' -> 'U';
+                case 'L' -> 'R';
+                case 'R' -> 'L';
+                default -> ' ';
+            };
+        
+            // Essaye les directions, sauf celle qui est strictement opposée à lastDirection
+            for (char dir : directions) {
+                if (dir != opposite && canMove(dir)) {
+                    setDirection(dir, speed);
+                    lastDirection = dir; // 🧠 mise à jour mémoire
+                    return;
+                }
+            }
+        
+            // Dernier recours : essayer quand même la direction opposée (cul-de-sac)
+            if (canMove(opposite)) {
+                setDirection(opposite, speed);
+                lastDirection = opposite;
+                return;
+            }
+        
+            // 😵 Totalement bloqué
+            velocityX = 0;
+            velocityY = 0;
+        }
+        
+
+        private boolean isOpposite(char d1, char d2) {
+            return (d1 == 'U' && d2 == 'D') || (d1 == 'D' && d2 == 'U') ||
+                   (d1 == 'L' && d2 == 'R') || (d1 == 'R' && d2 == 'L');
+        }
+        
+        
+
+        private boolean canMove(char dir) {
+            int testX = x, testY = y;
+        
+            if (dir == 'U') testY -= tileSize;
+            if (dir == 'D') testY += tileSize;
+            if (dir == 'L') testX -= tileSize;
+            if (dir == 'R') testX += tileSize;
+        
+            Rectangle nextTile = new Rectangle(testX, testY, tileSize, tileSize);
+        
+            for (Block wall : walls) {
+                Rectangle wallRect = new Rectangle(wall.x, wall.y, wall.width, wall.height);
+                if (wallRect.intersects(nextTile)) {
+                    return false; // ❌ collision avec un mur
+                }
+            }
+        
+            return true; // ✅ passage possible
+        }
+
+        private void setDirection(char dir, int speed) {
+            direction = dir;
+            switch (dir) {
+                case 'U': velocityX = 0; velocityY = -speed; break;
+                case 'D': velocityX = 0; velocityY = speed; break;
+                case 'L': velocityX = -speed; velocityY = 0; break;
+                case 'R': velocityX = speed; velocityY = 0; break;
+                default: velocityX = 0; velocityY = 0; break;
+            }
+        }
+        
+        
+        
+        
+        
+        
     }
+    
     
     class TimedCherry {
         Block block;
@@ -187,6 +328,10 @@ private Image whiteGhostImage;
 
 
 
+private boolean isDying = false;
+private int dyingFrameIndex = 0;
+private List<Image> dyingFrames = new ArrayList<>();
+private Timer dyingAnimationTimer;
 
 
 
@@ -315,6 +460,16 @@ Set<Point> powerPelletPoints = Set.of(
         eyesImage = new ImageIcon(getClass().getResource("./eyes.png")).getImage();
         whiteGhostImage = new ImageIcon(getClass().getResource("./whiteGhost.png")).getImage();
 
+        // Animation mort de Pacman
+String[] frameNames = {
+    "un.png", "deux.png", "trois.png", "quatre.png", "cinq.png", "six.png",
+    "sept.png", "huit.png", "neuf.png", "dix.png", "onze.png", "douze.png"
+};
+
+for (String name : frameNames) {
+    dyingFrames.add(new ImageIcon(getClass().getResource("./" + name)).getImage());
+}
+
         
 
         // Charge la carte initiale du jeu à partir des données du tableau
@@ -340,7 +495,6 @@ Set<Point> powerPelletPoints = Set.of(
         walls = new HashSet<>();
         foods = new HashSet<>();
         ghosts = new HashSet<>();
-      
     
         // 🧱 Chargement de la carte
         for (int r = 0; r < rowCount; r++) {
@@ -353,18 +507,31 @@ Set<Point> powerPelletPoints = Set.of(
                     case 'X':
                         walls.add(new Block(wallImage, x, y, tileSize, tileSize));
                         break;
+    
                     case 'b':
-                        ghosts.add(new Block(blueGhostImage, x, y, tileSize, tileSize));
+                        Block blue = new Block(blueGhostImage, x, y, tileSize, tileSize);
+                        blue.isGhost = true;
+                        ghosts.add(blue);
                         break;
+    
                     case 'o':
-                        ghosts.add(new Block(orangeGhostImage, x, y, tileSize, tileSize));
+                        Block orange = new Block(orangeGhostImage, x, y, tileSize, tileSize);
+                        orange.isGhost = true;
+                        ghosts.add(orange);
                         break;
+    
                     case 'p':
-                        ghosts.add(new Block(pinkGhostImage, x, y, tileSize, tileSize));
+                        Block pink = new Block(pinkGhostImage, x, y, tileSize, tileSize);
+                        pink.isGhost = true;
+                        ghosts.add(pink);
                         break;
+    
                     case 'r':
-                        ghosts.add(new Block(redGhostImage, x, y, tileSize, tileSize));
+                        Block red = new Block(redGhostImage, x, y, tileSize, tileSize);
+                        red.isGhost = true;
+                        ghosts.add(red);
                         break;
+    
                     case 'P':
                         if (selectedCharacter.equals("ladypacman")) {
                             pacman = new Block(new ImageIcon(getClass().getResource("./ladyPacmanRight.png")).getImage(), x, y, tileSize, tileSize);
@@ -372,31 +539,18 @@ Set<Point> powerPelletPoints = Set.of(
                             pacman = new Block(new ImageIcon(getClass().getResource("./pacmanRight.png")).getImage(), x, y, tileSize, tileSize);
                         }
                         break;
+    
                     case ' ':
                         if (r < rowCount - 2) {
-                            if (r < rowCount - 2) {
-                                boolean isPower = powerPelletPoints.contains(new Point(c, r));
-                            
-                                int size = isPower ? 8 : 4;
-                                int offset = (tileSize - size) / 2;
-                            
-                                foods.add(new Block(null, c * tileSize + offset, r * tileSize + offset, size, size));
-                            }
-                            
+                            boolean isPower = powerPelletPoints.contains(new Point(c, r));
+                            int size = isPower ? 8 : 4;
+                            int offset = (tileSize - size) / 2;
+                            foods.add(new Block(null, c * tileSize + offset, r * tileSize + offset, size, size));
                         }
                         break;
                 }
             }
         }
-    
-        
-        
-        
-        
-        
-        
-        
-       
     
         // 🕳️ Ajout de murs invisibles sur les 2 dernières lignes
         for (int r = rowCount - 2; r < rowCount; r++) {
@@ -418,6 +572,30 @@ Set<Point> powerPelletPoints = Set.of(
     }
 
     public void draw(Graphics g) {
+
+        // 💀 Si Pacman est en train de mourir, dessine l’animation par-dessus tout
+// 💀 Si Pacman est en train de mourir, on affiche l’animation
+if (isDying && dyingFrameIndex < dyingFrames.size()) {
+    Image currentFrame = dyingFrames.get(dyingFrameIndex);
+    int w = currentFrame.getWidth(null);
+    int h = currentFrame.getHeight(null);
+
+    double scale = 2.0; // 🔥 plus grand mais toujours propre
+    int newW = (int)(w * scale);
+    int newH = (int)(h * scale);
+
+    int offsetX = (pacman.width - newW) / 2;
+    int offsetY = (pacman.height - newH) / 2;
+
+    g.drawImage(currentFrame, dyingX + offsetX, dyingY + offsetY, newW, newH, null);
+}
+
+
+
+
+
+
+
         // 🍒 Dessiner les cerises (vies restantes)
         for (int i = 0; i < lives; i++) {
             g.drawImage(cherryImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
@@ -441,8 +619,11 @@ if (isFrightenedMode && frightenedTimeRemaining > 0) {
 }
 
     
-        // Dessine Pac-Man à ses coordonnées actuelles
+     // Dessine Pac-Man uniquement s’il ne meurt pas
+     if (!isDying && !gameOver) {
         g.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height, null);
+    }
+
     
         updateFrightenedGhostBlinking(); // 👈 pour faire clignoter les fantômes
 
@@ -503,35 +684,13 @@ if (showDeuxCent) {
 }
 
 // 👀 Affiche les yeux fixes pendant 2s
-List<FloatingEyes> expiredEyes = new ArrayList<>();
+// 👁️ Affiche tous les yeux fantômes
 for (FloatingEyes fe : floatingEyesList) {
-    if (fe.isExpired()) {
-        expiredEyes.add(fe);
-    } else {
-        int row = fe.y / tileSize;
-        int col = fe.x / tileSize;
-
-        // ✅ Condition 1 : la position est dans la map valide
-        if (row < rowCount - 2 && col >= 0 && col < columnCount) {
-            char tileChar = tileMap[row].charAt(col);
-
-            // ✅ Condition 2 : la case est un couloir (pastille ou vide, pas mur)
-            boolean isWalkable = tileChar == ' ' || tileChar == 'P' || tileChar == 'b' || tileChar == 'o' || tileChar == 'p' || tileChar == 'r';
-
-            // ✅ Condition 3 : distance avec Pacman < 5 tiles (manhattan)
-            int pacRow = pacman.y / tileSize;
-            int pacCol = pacman.x / tileSize;
-            int dist = Math.abs(row - pacRow) + Math.abs(col - pacCol);
-
-            if (isWalkable && dist <= 5) {
-                int offsetX = (tileSize - eyesImage.getWidth(null)) / 2;
-                int offsetY = (tileSize - eyesImage.getHeight(null)) / 2;
-                g.drawImage(eyesImage, fe.x + offsetX, fe.y + offsetY, null);
-            }
-        }
-    }
+    int offsetX = (tileSize - eyesImage.getWidth(null)) / 2;
+    int offsetY = (tileSize - eyesImage.getHeight(null)) / 2;
+    g.drawImage(eyesImage, fe.x + offsetX, fe.y + offsetY, null);
 }
-floatingEyesList.removeAll(expiredEyes);
+
 
 // 🔥 READY ! affiché pendant 5s au démarrage
 if (showReady) {
@@ -559,6 +718,7 @@ if (showReady) {
                 originalGhostImages.put(ghost, ghost.image);
             }
             ghost.image = frightenedGhostImage;
+            ghost.updateVelocity(); // 👈 Ralentir tout de suite
         }
     
         frightenedCountdownTimer = new Timer(1000, e -> {
@@ -577,15 +737,26 @@ if (showReady) {
                 if (originalGhostImages.containsKey(ghost)) {
                     ghost.image = originalGhostImages.get(ghost);
                 }
+    
+                ghost.reset(); // 🔁 Retour à la position de départ
+                char newDir = directions[random.nextInt(4)];
+                ghost.direction = newDir;
+                ghost.updateVelocity(); // vitesse normale selon direction
             }
     
             for (Block eaten : eatenGhostsDuringFrightened) {
                 if (!ghosts.contains(eaten)) {
                     ghosts.add(eaten);
                 }
+    
                 if (originalGhostImages.containsKey(eaten)) {
                     eaten.image = originalGhostImages.get(eaten);
                 }
+    
+                eaten.reset(); // 🔁 Retour à la base aussi
+                char newDir = directions[random.nextInt(4)];
+                eaten.direction = newDir;
+                eaten.updateVelocity();
             }
     
             eatenGhostsDuringFrightened.clear();
@@ -600,9 +771,6 @@ if (showReady) {
         frightenedModeTimer.setRepeats(false);
         frightenedModeTimer.start();
     }
-    
-    
-    
     
     
     
@@ -627,6 +795,8 @@ private void spawnCherry() {
 
     // Méthode pour déplacer Pac-Man et les fantômes
     public void move() {
+
+        
 
         if (!canPlay) return; // ⛔ empêche tout mouvement si les 5s ne sont pas passées
 
@@ -712,17 +882,23 @@ private void spawnCherry() {
                     eatenGhostsDuringFrightened.add(ghost);
             
                     // 👁️ Ajout des yeux fantôme qui vont vers une position b/p/o
-                    floatingEyesList.add(new FloatingEyes(ghost.x + tileSize / 2, ghost.y)); // décalé de 16px à droite
+                    int alignedX = (ghost.x / tileSize) * tileSize;
+                    int alignedY = (ghost.y / tileSize) * tileSize;
+                    floatingEyesList.add(new FloatingEyes(alignedX, alignedY));
+                    
+// décalé de 16px à droite
 
 
             
                 } else {
                     lives -= 1;
-                    if (lives == 0) {
-                        gameOver = true;
-                        return;
-                    }
-                    resetPositions();
+if (lives == 0) {
+    // 👇 Capture bien la position AVANT toute action
+    startDyingAnimation();
+    return;
+}
+resetPositions();
+
                 }
             }
             
@@ -818,7 +994,13 @@ if (eatingClip != null && eatingClip.isRunning()) {
     }
 }
 
+for (FloatingEyes fe : floatingEyesList) {
+            fe.move();
+        }
+        floatingEyesList.removeIf(fe -> fe.shouldDisappear());
     }
+
+    
     
 
     // Méthode pour vérifier les collisions entre deux objets (Pacman ou un fantôme)
@@ -929,6 +1111,34 @@ System.out.println("🔊 Son joué : " + fileName + " à " + System.currentTimeM
         }
     }).start();
 }
+
+private int dyingX, dyingY;
+
+private void startDyingAnimation() {
+    isDying = true;
+    dyingFrameIndex = 0;
+
+    // 🧊 Figer la position de Pacman
+    dyingX = pacman.x;
+    dyingY = pacman.y;
+
+    // ⏱️ Timer pour jouer l'animation
+    dyingAnimationTimer = new Timer(100, new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            dyingFrameIndex++;
+            if (dyingFrameIndex >= dyingFrames.size()) {
+                dyingAnimationTimer.stop();
+                isDying = false;
+                gameOver = true;
+            }
+            repaint();
+        }
+    });
+
+    dyingAnimationTimer.start();
+}
+
+
 
 public void playPowerPelletSound() {
     try {
