@@ -131,8 +131,8 @@ public class PacMan extends JPanel implements ActionListener, KeyListener {
         FloatingEyes(int startX, int startY) {
             this.x = startX;
             this.y = startY;
-            this.goalX = 11 * tileSize;
-            this.goalY = 9 * tileSize;
+            this.goalX = 9 * tileSize; // 👁️ Destination = red ghost 'r'
+    this.goalY = 8 * tileSize;
             updateDirectionTowardGoal();
         }
     
@@ -304,6 +304,9 @@ private int boardHeight = rowCount * tileSize;  // Hauteur totale du jeu
     private Image blackWallImage;
     private Image frightenedGhostImage;
     private Image deuxcentImage;
+
+    private Image readyImage;
+
  
 
 
@@ -325,6 +328,8 @@ private Clip eatingClip; // Son de mastication
 private Clip powerPelletClip;
 
 private Image whiteGhostImage;
+private Image gameOverImage;
+
 
 
 
@@ -348,7 +353,7 @@ private Timer dyingAnimationTimer;
         "XXXX XXXX XXXX XXXX",
         "XOOX X       X XOOX",
         "XXXX X XXrXX X XXXX",
-        "X       bpo       X",
+        "X      XbpoX      X",
         "XXXX X XXXXX X XXXX",
         "XOOX X       X XOOX",
         "XXXX X XXXXX X XXXX",
@@ -430,9 +435,7 @@ Set<Point> powerPelletPoints = Set.of(
         this.setLayout(null);
 
         // Créer le bouton "Exit"
-        exitButton = new JButton("Exit");
-        exitButton.setBounds(boardWidth - 200, boardHeight - 40, 80, 30); //
-        this.add(exitButton);
+        
       this.setVisible(true);
 
        // bottomPanel.add(exitButton);
@@ -459,6 +462,10 @@ Set<Point> powerPelletPoints = Set.of(
 
         eyesImage = new ImageIcon(getClass().getResource("./eyes.png")).getImage();
         whiteGhostImage = new ImageIcon(getClass().getResource("./whiteGhost.png")).getImage();
+        readyImage = new ImageIcon(getClass().getResource("./ready.png")).getImage();
+
+        gameOverImage = new ImageIcon(getClass().getResource("./Gameover.png")).getImage();
+
 
         // Animation mort de Pacman
 String[] frameNames = {
@@ -598,7 +605,7 @@ if (isDying && dyingFrameIndex < dyingFrames.size()) {
 
         // 🍒 Dessiner les cerises (vies restantes)
         for (int i = 0; i < lives; i++) {
-            g.drawImage(cherryImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
+            g.drawImage(pacmanLeftImage, i * 30 + 10, boardHeight - 40, 24, 24, null);
         }
         // ⏱️ Affichage du chronomètre uniquement pendant frightened mode
 if (isFrightenedMode && frightenedTimeRemaining > 0) {
@@ -665,14 +672,16 @@ for (TimedCherry tc : cherries) {
 
     
         // 💀 Affichage du "Game Over" en GRAND au milieu
-        if (gameOver) {
-            g.setFont(new Font("Arial", Font.BOLD, 50));
-            g.setColor(Color.RED);
-            String message = "GAME OVER";
-            int textWidth = g.getFontMetrics().stringWidth(message);
-            int textHeight = g.getFontMetrics().getHeight();
-            g.drawString(message, (boardWidth - textWidth) / 2, (boardHeight - textHeight) / 2);
+        if (gameOver && gameOverImage != null) {
+            int imageWidth = gameOverImage.getWidth(null);
+            int imageHeight = gameOverImage.getHeight(null);
+        
+            int centerX = (boardWidth - imageWidth) / 2;
+            int centerY = 11 * tileSize + (tileSize - imageHeight) / 2;
+        
+            g.drawImage(gameOverImage, centerX, centerY, null);
         }
+        
         // 💥 Affichage de deuxcent.png pendant 2 secondes
 if (showDeuxCent) {
     long currentTime = System.currentTimeMillis();
@@ -686,20 +695,30 @@ if (showDeuxCent) {
 // 👀 Affiche les yeux fixes pendant 2s
 // 👁️ Affiche tous les yeux fantômes
 for (FloatingEyes fe : floatingEyesList) {
-    int offsetX = (tileSize - eyesImage.getWidth(null)) / 2;
-    int offsetY = (tileSize - eyesImage.getHeight(null)) / 2;
-    g.drawImage(eyesImage, fe.x + offsetX, fe.y + offsetY, null);
+    int scale = 3; // ou 3 si tu veux encore plus gros
+int newWidth = eyesImage.getWidth(null) * scale / 2;
+int newHeight = eyesImage.getHeight(null) * scale / 2;
+
+int offsetX = (tileSize - newWidth) / 2;
+int offsetY = (tileSize - newHeight) / 2;
+
+g.drawImage(eyesImage, fe.x + offsetX, fe.y + offsetY, newWidth, newHeight, null);
+
 }
 
 
 // 🔥 READY ! affiché pendant 5s au démarrage
-if (showReady) {
-    g.setFont(new Font("Arial", Font.BOLD, 40));
-    g.setColor(Color.YELLOW);
-    String message = "READY!";
-    int textWidth = g.getFontMetrics().stringWidth(message);
-    g.drawString(message, (boardWidth - textWidth) / 2, boardHeight / 2 + 20);
+if (showReady && readyImage != null) {
+    int imageWidth = readyImage.getWidth(null);
+    int imageHeight = readyImage.getHeight(null);
+
+    int centerX = (boardWidth - imageWidth) / 2;
+    int centerY = 11 * tileSize + (tileSize - imageHeight) / 2;
+
+
+    g.drawImage(readyImage, centerX, centerY, null);
 }
+
 
 
 
@@ -1122,6 +1141,22 @@ private void startDyingAnimation() {
     dyingX = pacman.x;
     dyingY = pacman.y;
 
+    // 🔇 Stopper tous les autres sons
+    if (eatingClip != null && eatingClip.isRunning()) {
+        eatingClip.stop();
+        eatingClip.close();
+        eatingClip = null;
+    }
+
+    if (powerPelletClip != null && powerPelletClip.isRunning()) {
+        powerPelletClip.stop();
+        powerPelletClip.close();
+        powerPelletClip = null;
+    }
+
+    // 💀 Joue le son de mort
+    playDeathSound();
+
     // ⏱️ Timer pour jouer l'animation
     dyingAnimationTimer = new Timer(100, new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -1137,6 +1172,7 @@ private void startDyingAnimation() {
 
     dyingAnimationTimer.start();
 }
+
 
 
 
@@ -1158,6 +1194,27 @@ public void playPowerPelletSound() {
         e.printStackTrace();
     }
 }
+
+private Clip deathClip;
+
+public void playDeathSound() {
+    try {
+        if (deathClip != null && deathClip.isRunning()) {
+            deathClip.stop();
+            deathClip.close();
+        }
+
+        File soundFile = new File("death.wav");
+        AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+        deathClip = AudioSystem.getClip();
+        deathClip.open(audioIn);
+        deathClip.start();
+        System.out.println("💀 Son de mort joué !");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
 
 public void playEatingSound() {
     try {
