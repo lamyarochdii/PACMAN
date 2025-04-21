@@ -803,11 +803,13 @@ private void spawnCherry() {
         List<Block> foodList = new ArrayList<>(foods);
         Block randomFood = foodList.get(random.nextInt(foodList.size()));
 
-        Block cherryBlock = new Block(cherryImage, randomFood.x, randomFood.y, 20, 20);
+        Block cherryBlock = new Block(cherryImage, randomFood.x - 2, randomFood.y - 2, 24, 24);
+
         cherries.add(new TimedCherry(cherryBlock));
         foods.remove(randomFood);
     }
 }
+
 
 
 
